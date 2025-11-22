@@ -13,6 +13,16 @@ function formatDate(d) {
   return `${year}-${month}-${day}`;
 }
 
+function formatTimeShort(isoString) {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  const hrs = d.getHours();
+  const mins = String(d.getMinutes()).padStart(2, "0");
+  const ampm = hrs >= 12 ? "PM" : "AM";
+  const h12 = hrs % 12 || 12;
+  return `${h12}:${mins} ${ampm}`;
+}
+
 // Rut model for Washington County, GA.
 // Peak: Oct 27 – Nov 2. Second rut ≈ Nov 24 – Nov 30.
 function getRutPhaseForWashingtonGA(date) {
@@ -147,7 +157,7 @@ async function fetchWeather(lat, lon, dateStr) {
   const url =
     "https://api.open-meteo.com/v1/forecast" +
     `?latitude=${lat}&longitude=${lon}` +
-    "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max" +
+    "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset" +
     "&timezone=auto&temperature_unit=fahrenheit&windspeed_unit=mph&precipitation_unit=inch" +
     `&start_date=${startStr}&end_date=${endStr}`;
 
@@ -171,7 +181,9 @@ async function fetchWeather(lat, lon, dateStr) {
     tMax: daily.temperature_2m_max[idxToday],
     tMin: daily.temperature_2m_min[idxToday],
     precip: daily.precipitation_sum[idxToday],
-    windMax: daily.windspeed_10m_max[idxToday]
+    windMax: daily.windspeed_10m_max[idxToday],
+    sunrise: daily.sunrise[idxToday],
+    sunset: daily.sunset[idxToday]
   };
 
   let prev = null;
@@ -181,7 +193,9 @@ async function fetchWeather(lat, lon, dateStr) {
       tMax: daily.temperature_2m_max[idxPrev],
       tMin: daily.temperature_2m_min[idxPrev],
       precip: daily.precipitation_sum[idxPrev],
-      windMax: daily.windspeed_10m_max[idxPrev]
+      windMax: daily.windspeed_10m_max[idxPrev],
+      sunrise: daily.sunrise[idxPrev],
+      sunset: daily.sunset[idxPrev]
     };
   }
 
@@ -200,7 +214,7 @@ async function fetchWeatherRange(lat, lon, startDateStr, days) {
   const url =
     "https://api.open-meteo.com/v1/forecast" +
     `?latitude=${lat}&longitude=${lon}` +
-    "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max" +
+    "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset" +
     "&timezone=auto&temperature_unit=fahrenheit&windspeed_unit=mph&precipitation_unit=inch" +
     `&start_date=${startStr}&end_date=${endStr}`;
 
@@ -390,6 +404,50 @@ function initTabs() {
   });
 }
 
+// ---------- map (Leaflet) ----------
+
+let mapInstance = null;
+let mapMarker = null;
+
+function initMap(latInput, lonInput) {
+  const mapEl = document.getElementById("map");
+  if (!mapEl || !window.L) return;
+
+  const lat = parseFloat(latInput.value) || 32.9533;
+  const lon = parseFloat(lonInput.value) || -82.6182;
+
+  mapInstance = L.map(mapEl).setView([lat, lon], 13);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19
+  }).addTo(mapInstance);
+
+  mapMarker = L.marker([lat, lon], { draggable: true }).addTo(mapInstance);
+
+  function updateInputsFromMarker(e) {
+    const { lat, lng } = e.target.getLatLng();
+    latInput.value = lat.toFixed(4);
+    lonInput.value = lng.toFixed(4);
+  }
+
+  mapMarker.on("moveend", updateInputsFromMarker);
+
+  mapInstance.on("click", e => {
+    const { lat, lng } = e.latlng;
+    mapMarker.setLatLng(e.latlng);
+    latInput.value = lat.toFixed(4);
+    lonInput.value = lng.toFixed(4);
+  });
+}
+
+function centerMapOnInputs(latInput, lonInput) {
+  if (!mapInstance || !mapMarker) return;
+  const lat = parseFloat(latInput.value) || 32.9533;
+  const lon = parseFloat(lonInput.value) || -82.6182;
+  mapInstance.setView([lat, lon], 13);
+  mapMarker.setLatLng([lat, lon]);
+}
+
 // ---------- main DOM wiring ----------
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -405,6 +463,41 @@ document.addEventListener("DOMContentLoaded", () => {
   if (plannerStartInput) plannerStartInput.value = todayStr;
   if (logDateInput) logDateInput.value = todayStr;
 
+  // Init map
+  const latInput = document.getElementById("lat");
+  const lonInput = document.getElementById("lon");
+  if (latInput && lonInput && window.L) {
+    initMap(latInput, lonInput);
+  }
+
+  // Map helper buttons
+  const centerBtn = document.getElementById("centerOnInputsBtn");
+  if (centerBtn && latInput && lonInput) {
+    centerBtn.addEventListener("click", () => {
+      centerMapOnInputs(latInput, lonInput);
+    });
+  }
+
+  const copyToPlannerBtn = document.getElementById("copyToPlannerBtn");
+  const plannerLatInput = document.getElementById("plannerLat");
+  const plannerLonInput = document.getElementById("plannerLon");
+  if (copyToPlannerBtn && plannerLatInput && plannerLonInput) {
+    copyToPlannerBtn.addEventListener("click", () => {
+      plannerLatInput.value = latInput.value;
+      plannerLonInput.value = lonInput.value;
+    });
+  }
+
+  // Keep planner coords roughly in sync when main coords change
+  ["change", "blur"].forEach(evtName => {
+    latInput?.addEventListener(evtName, () => {
+      if (plannerLatInput) plannerLatInput.value = latInput.value;
+    });
+    lonInput?.addEventListener(evtName, () => {
+      if (plannerLonInput) plannerLonInput.value = lonInput.value;
+    });
+  });
+
   // ----- Live Odds tab -----
   const calculateBtn = document.getElementById("calculateBtn");
   const errorText = document.getElementById("errorText");
@@ -413,6 +506,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const weatherSummary = document.getElementById("weatherSummary");
   const weatherDetails = document.getElementById("weatherDetails");
   const weatherFlagsP = document.getElementById("weatherFlags");
+  const weatherSun = document.getElementById("weatherSun");
 
   const resultsCard = document.getElementById("resultsCard");
   const scoreText = document.getElementById("scoreText");
@@ -420,6 +514,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const badgeText = document.getElementById("badgeText");
   const ratingText = document.getElementById("ratingText");
   const tipsText = document.getElementById("tipsText");
+  const gaugeFill = document.getElementById("gaugeFill");
 
   if (calculateBtn) {
     calculateBtn.addEventListener("click", async () => {
@@ -431,8 +526,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const timeOfDay = document.getElementById("timeOfDay").value;
       const terrain = document.getElementById("terrain").value;
       const huntingPressure = document.getElementById("huntingPressure").value;
-      const lat = parseFloat(document.getElementById("lat").value);
-      const lon = parseFloat(document.getElementById("lon").value);
+      const lat = parseFloat(latInput.value);
+      const lon = parseFloat(lonInput.value);
 
       if (!dateStr) {
         errorText.textContent = "Please pick a hunt date.";
@@ -477,8 +572,14 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           details += "No prior-day weather available. ";
         }
-
         weatherDetails.textContent = details;
+
+        if (today.sunrise && today.sunset) {
+          weatherSun.textContent =
+            `Sunrise: ${formatTimeShort(today.sunrise)} • Sunset: ${formatTimeShort(today.sunset)}`;
+        } else {
+          weatherSun.textContent = "";
+        }
 
         const flagDescriptions = [];
         if (flags.coldFront) flagDescriptions.push("Cold front detected");
@@ -509,6 +610,10 @@ document.addEventListener("DOMContentLoaded", () => {
         scoreText.textContent = `Activity Score: ${score.toFixed(0)} / 100`;
         chanceText.textContent =
           `Estimated chance of seeing deer in daylight: ${chancePercent}%`;
+
+        if (gaugeFill) {
+          gaugeFill.style.width = `${chancePercent}%`;
+        }
 
         const badge = getBadge(score);
         badgeText.textContent = badge.text;
@@ -552,8 +657,8 @@ document.addEventListener("DOMContentLoaded", () => {
       plannerResultsCard.style.display = "none";
       plannerTableBody.innerHTML = "";
 
-      const lat = parseFloat(document.getElementById("plannerLat").value);
-      const lon = parseFloat(document.getElementById("plannerLon").value);
+      const lat = parseFloat(plannerLatInput.value);
+      const lon = parseFloat(plannerLonInput.value);
       const startDateStr = document.getElementById("plannerStartDate").value;
       const terrain = document.getElementById("plannerTerrain").value;
       const pressure = document.getElementById("plannerPressure").value;
@@ -581,7 +686,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const precip = daily.precipitation_sum;
         const wind = daily.windspeed_10m_max;
 
-        // Build data array skipping the first "previous day"
         const startDate = new Date(startDateStr);
         const rows = [];
 
@@ -617,16 +721,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const flags = deriveWeatherFlags(today, prev, d);
           const rutInfo = getRutPhaseForWashingtonGA(d);
-
-          // Score morning vs evening, pick best
-          const pressures = pressure;
           const phases = rutInfo.id;
 
           function scoreForTime(timeOfDay) {
             let s = getBaseFromRut(phases);
             s += getTimeOfDayModifier(timeOfDay, phases);
             s += getWeatherModifier(flags);
-            s += getPressureModifier(pressures);
+            s += getPressureModifier(pressure);
             if ((phases === "rut" || phases === "secondRut") &&
                 terrain === "pinesClearcuts") {
               s += 3;
@@ -674,7 +775,6 @@ document.addEventListener("DOMContentLoaded", () => {
           }
 
           const scoreRounded = Math.round(row.score);
-          const badge = getBadge(scoreRounded);
 
           tr.innerHTML =
             `<td>${row.dateStr}</td>` +
@@ -712,8 +812,10 @@ document.addEventListener("DOMContentLoaded", () => {
       logError.style.display = "none";
       const date = document.getElementById("logDate").value;
       const timeOfDay = document.getElementById("logTimeOfDay").value;
-      const deerSeen = parseInt(document.getElementById("logDeerSeen").value, 10) || 0;
-      const shots = parseInt(document.getElementById("logShots").value, 10) || 0;
+      const deerSeen =
+        parseInt(document.getElementById("logDeerSeen").value, 10) || 0;
+      const shots =
+        parseInt(document.getElementById("logShots").value, 10) || 0;
       const success = document.getElementById("logSuccess").value;
       const notes = document.getElementById("logNotes").value.trim();
 
