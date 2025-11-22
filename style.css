@@ -5,19 +5,19 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #0b1728;
+  background: #050912;
   color: #f5f5f5;
 }
 
 .app {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
 
 header {
   text-align: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 h1 {
@@ -31,26 +31,61 @@ h1 {
   opacity: 0.8;
 }
 
-.card {
-  background: #141f33;
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
+/* Tabs */
+
+.tabs {
+  display: flex;
+  gap: 0.5rem;
   margin-bottom: 1rem;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  overflow-x: auto;
+}
+
+.tab-btn {
+  flex: 1;
+  min-width: 90px;
+  padding: 0.5rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid #233252;
+  background: #0c1324;
+  color: #f5f5f5;
+  font-size: 0.86rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab-btn.active {
+  border-color: #ff7f32;
+  background: linear-gradient(135deg, #ff7f32, #ffb347);
+  color: #11141b;
+  font-weight: 600;
+}
+
+.tab-panel.hidden {
+  display: none;
+}
+
+/* Cards */
+
+.card {
+  background: #10192b;
+  border-radius: 12px;
+  padding: 1.2rem 1.3rem;
+  margin-bottom: 0.9rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
 }
 
 h2 {
   margin-top: 0;
-  font-size: 1.3rem;
+  font-size: 1.25rem;
 }
 
 h3 {
   margin-top: 0.75rem;
-  font-size: 1.05rem;
+  font-size: 1.02rem;
 }
 
 .field {
-  margin-bottom: 1rem;
+  margin-bottom: 0.9rem;
 }
 
 .field label {
@@ -61,18 +96,24 @@ h3 {
 
 .field input[type="date"],
 .field input[type="number"],
-.field select {
+.field select,
+.field textarea {
   width: 100%;
   padding: 0.45rem 0.6rem;
   border-radius: 8px;
   border: 1px solid #32415f;
-  background: #09101f;
+  background: #070e1c;
   color: #f5f5f5;
   font-size: 0.9rem;
 }
 
+.field textarea {
+  resize: vertical;
+}
+
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   outline: none;
   border-color: #ff7f32;
 }
@@ -84,10 +125,25 @@ h3 {
 }
 
 .field-inline .field {
-  flex: 1 1 130px;
+  flex: 1 1 140px;
 }
 
-button#calculateBtn {
+.hint {
+  font-size: 0.8rem;
+  opacity: 0.8;
+  margin-top: -0.25rem;
+  margin-bottom: 0.6rem;
+}
+
+/* Buttons */
+
+button {
+  font-family: inherit;
+}
+
+button#calculateBtn,
+button#plannerBtn,
+button#logSaveBtn {
   width: 100%;
   padding: 0.6rem 0.8rem;
   border-radius: 999px;
@@ -99,14 +155,36 @@ button#calculateBtn {
   cursor: pointer;
 }
 
-button#calculateBtn:disabled {
+button#calculateBtn:disabled,
+button#plannerBtn:disabled,
+button#logSaveBtn:disabled {
   opacity: 0.7;
   cursor: wait;
 }
 
-button#calculateBtn:hover:enabled {
+button#calculateBtn:hover:enabled,
+button#plannerBtn:hover:enabled,
+button#logSaveBtn:hover:enabled {
   filter: brightness(1.05);
 }
+
+.secondary-btn {
+  margin-top: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid #314261;
+  background: #0b1728;
+  color: #f5f5f5;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.secondary-btn:hover {
+  filter: brightness(1.08);
+}
+
+/* Output styling */
 
 .score {
   font-size: 1.1rem;
@@ -119,6 +197,39 @@ button#calculateBtn:hover:enabled {
   margin: 0.25rem 0;
 }
 
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.badge.good {
+  background: rgba(64, 200, 130, 0.18);
+  color: #40c882;
+  border: 1px solid rgba(64, 200, 130, 0.7);
+}
+
+.badge.great {
+  background: rgba(255, 165, 0, 0.18);
+  color: #ffb347;
+  border: 1px solid rgba(255, 165, 0, 0.85);
+}
+
+.badge.ok {
+  background: rgba(135, 206, 235, 0.15);
+  color: #8fd2ff;
+  border: 1px solid rgba(135, 206, 235, 0.7);
+}
+
+.badge.poor {
+  background: rgba(255, 99, 132, 0.15);
+  color: #ff9f9f;
+  border: 1px solid rgba(255, 99, 132, 0.7);
+}
+
 .rating {
   font-size: 0.95rem;
   margin-bottom: 0.5rem;
@@ -129,22 +240,97 @@ button#calculateBtn:hover:enabled {
   margin-bottom: 0.35rem;
 }
 
-.hint {
-  font-size: 0.8rem;
-  opacity: 0.8;
-  margin-top: -0.25rem;
-  margin-bottom: 0.75rem;
-}
-
 .error {
   color: #ff9f9f;
   font-size: 0.85rem;
   margin-top: 0.5rem;
 }
 
+/* Planner table */
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+th,
+td {
+  padding: 0.4rem 0.35rem;
+  text-align: left;
+  border-bottom: 1px solid #1f2940;
+}
+
+th {
+  font-weight: 600;
+  font-size: 0.82rem;
+  opacity: 0.8;
+}
+
+tr.best-day {
+  background: rgba(255, 127, 50, 0.1);
+}
+
+/* Hunt log */
+
+#logList .log-entry {
+  border: 1px solid #22314c;
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  margin-bottom: 0.5rem;
+  background: #0a111f;
+}
+
+#logList .log-entry-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Checklist */
+
+.checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+}
+
+.checklist-grid h3 {
+  margin-bottom: 0.4rem;
+}
+
+.checklist-grid label {
+  display: block;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+}
+
+.checklist-grid input[type="checkbox"] {
+  margin-right: 0.4rem;
+}
+
+/* Footer */
+
 footer {
-  margin-top: 1.5rem;
+  margin-top: 1.2rem;
   text-align: center;
   font-size: 0.8rem;
   opacity: 0.75;
+}
+
+/* Small screens */
+
+@media (max-width: 600px) {
+  .app {
+    padding: 0.9rem;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+  }
 }
