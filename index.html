@@ -2,98 +2,289 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Deer Activity & Odds – Davisboro GA</title>
+  <title>Deer Activity & Hunt Planner – Davisboro GA</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app">
     <header>
-      <h1>Deer Activity & Odds</h1>
+      <h1>Deer Activity & Hunt Planner</h1>
       <p class="subtitle">
-        Uses live weather (Open-Meteo) and a rut model based on Georgia rut dates (Washington County).
+        Live weather + rut model + planner for whitetail hunting (tuned for Washington County, GA / pine & clearcut country).
       </p>
     </header>
 
-    <section class="card">
-      <h2>Hunt Setup</h2>
+    <!-- Tabs navigation -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="liveOdds">Live Odds</button>
+      <button class="tab-btn" data-tab="planner">7-Day Planner</button>
+      <button class="tab-btn" data-tab="log">Hunt Log</button>
+      <button class="tab-btn" data-tab="checklist">Checklist</button>
+    </nav>
 
-      <div class="field">
-        <label for="date">Hunt Date</label>
-        <input type="date" id="date" />
-      </div>
+    <!-- ========== TAB: LIVE ODDS ========== -->
+    <section class="tab-panel" data-tab-panel="liveOdds">
+      <section class="card">
+        <h2>Hunt Setup</h2>
 
-      <div class="field">
-        <label for="timeOfDay">Time of Day</label>
-        <select id="timeOfDay">
-          <option value="morning">Morning (first 3 hours)</option>
-          <option value="midday">Midday (10 AM – 2 PM)</option>
-          <option value="evening">Evening (last 3 hours)</option>
-          <option value="allDay">All-day sit</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="terrain">Terrain Type</label>
-        <select id="terrain">
-          <option value="pinesClearcuts" selected>Pines & clearcuts (Davisboro style)</option>
-          <option value="hardwoods">Hardwoods / oak draws</option>
-          <option value="agEdges">Ag fields / edges</option>
-          <option value="mixed">Mixed habitat</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="huntingPressure">Hunting Pressure</label>
-        <select id="huntingPressure">
-          <option value="low">Low (private, lightly hunted)</option>
-          <option value="medium" selected>Medium</option>
-          <option value="high">High (public / lots of hunting)</option>
-        </select>
-      </div>
-
-      <h3>Location (for live weather)</h3>
-      <p class="hint">
-        Defaults to Davisboro, GA. You can tweak if you hunt somewhere else.
-      </p>
-
-      <div class="field-inline">
         <div class="field">
-          <label for="lat">Latitude</label>
-          <input type="number" id="lat" step="0.0001" value="32.9533" />
+          <label for="date">Hunt Date</label>
+          <input type="date" id="date" />
         </div>
-        <div class="field">
-          <label for="lon">Longitude</label>
-          <input type="number" id="lon" step="0.0001" value="-82.6182" />
-        </div>
-      </div>
 
-      <button id="calculateBtn">Fetch Live Weather & Calculate Odds</button>
-      <p id="errorText" class="error" style="display:none;"></p>
+        <div class="field">
+          <label for="timeOfDay">Time of Day</label>
+          <select id="timeOfDay">
+            <option value="morning">Morning (first 3 hours)</option>
+            <option value="midday">Midday (10 AM – 2 PM)</option>
+            <option value="evening">Evening (last 3 hours)</option>
+            <option value="allDay">All-day sit</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="terrain">Terrain Type</label>
+          <select id="terrain">
+            <option value="pinesClearcuts" selected>Pines & clearcuts (Davisboro style)</option>
+            <option value="hardwoods">Hardwoods / oak draws</option>
+            <option value="agEdges">Ag fields / edges</option>
+            <option value="mixed">Mixed habitat</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="huntingPressure">Hunting Pressure</label>
+          <select id="huntingPressure">
+            <option value="low">Low (private, lightly hunted)</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High (public / heavily hunted)</option>
+          </select>
+        </div>
+
+        <h3>Location (for live weather)</h3>
+        <p class="hint">
+          Defaults to Davisboro, GA. Change if you hunt somewhere else.
+        </p>
+
+        <div class="field-inline">
+          <div class="field">
+            <label for="lat">Latitude</label>
+            <input type="number" id="lat" step="0.0001" value="32.9533" />
+          </div>
+          <div class="field">
+            <label for="lon">Longitude</label>
+            <input type="number" id="lon" step="0.0001" value="-82.6182" />
+          </div>
+        </div>
+
+        <button id="calculateBtn">Fetch Live Weather & Calculate Odds</button>
+        <p id="errorText" class="error" style="display:none;"></p>
+      </section>
+
+      <section class="card" id="weatherCard" style="display:none;">
+        <h2>Live Weather Summary</h2>
+        <p id="rutPhaseAuto" class="rut-label"></p>
+        <p id="weatherSummary"></p>
+        <p id="weatherDetails"></p>
+        <p id="weatherFlags"></p>
+      </section>
+
+      <section class="card" id="resultsCard" style="display:none;">
+        <h2>Deer Activity Results</h2>
+        <p class="score" id="scoreText">Score: –</p>
+        <p class="chance" id="chanceText">Chance: –</p>
+        <p class="badge" id="badgeText"></p>
+        <p class="rating" id="ratingText"></p>
+        <hr />
+        <h3>Hunt Tips For This Setup</h3>
+        <p id="tipsText"></p>
+      </section>
     </section>
 
-    <section class="card" id="weatherCard" style="display:none;">
-      <h2>Live Weather Summary</h2>
-      <p id="rutPhaseAuto" class="rut-label"></p>
-      <p id="weatherSummary"></p>
-      <p id="weatherDetails"></p>
+    <!-- ========== TAB: 7-DAY PLANNER ========== -->
+    <section class="tab-panel hidden" data-tab-panel="planner">
+      <section class="card">
+        <h2>7-Day Activity Planner</h2>
+        <p class="hint">
+          Uses your coordinates + rut model to rank the next 7 days. Morning & evening are scored automatically; it shows the best time of day.
+        </p>
+
+        <div class="field-inline">
+          <div class="field">
+            <label for="plannerLat">Latitude</label>
+            <input type="number" id="plannerLat" step="0.0001" value="32.9533" />
+          </div>
+          <div class="field">
+            <label for="plannerLon">Longitude</label>
+            <input type="number" id="plannerLon" step="0.0001" value="-82.6182" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="plannerStartDate">Start Date</label>
+          <input type="date" id="plannerStartDate" />
+        </div>
+
+        <div class="field">
+          <label for="plannerTerrain">Terrain</label>
+          <select id="plannerTerrain">
+            <option value="pinesClearcuts" selected>Pines & clearcuts</option>
+            <option value="hardwoods">Hardwoods</option>
+            <option value="agEdges">Ag edges</option>
+            <option value="mixed">Mixed</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="plannerPressure">Hunting Pressure</label>
+          <select id="plannerPressure">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+
+        <button id="plannerBtn">Generate 7-Day Forecast</button>
+        <p id="plannerError" class="error" style="display:none;"></p>
+      </section>
+
+      <section class="card" id="plannerResultsCard" style="display:none;">
+        <h2>Upcoming Hunts</h2>
+        <p id="plannerSummary"></p>
+        <div class="table-wrapper">
+          <table id="plannerTable">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Rut Phase</th>
+                <th>Hi / Lo (°F)</th>
+                <th>Best Time</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- filled by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
     </section>
 
-    <section class="card" id="resultsCard" style="display:none;">
-      <h2>Deer Activity Results</h2>
-      <p class="score" id="scoreText">Score: –</p>
-      <p class="chance" id="chanceText">Chance: –</p>
-      <p class="rating" id="ratingText"></p>
-      <hr />
-      <h3>Hunt Tips For This Setup</h3>
-      <p id="tipsText"></p>
+    <!-- ========== TAB: HUNT LOG ========== -->
+    <section class="tab-panel hidden" data-tab-panel="log">
+      <section class="card">
+        <h2>Hunt Log</h2>
+        <p class="hint">
+          Saved locally on this device only. Great for tracking how your land hunts over time.
+        </p>
+
+        <div class="field-inline">
+          <div class="field">
+            <label for="logDate">Date</label>
+            <input type="date" id="logDate" />
+          </div>
+          <div class="field">
+            <label for="logTimeOfDay">Time of Day</label>
+            <select id="logTimeOfDay">
+              <option value="morning">Morning</option>
+              <option value="midday">Midday</option>
+              <option value="evening">Evening</option>
+              <option value="allDay">All-day</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field-inline">
+          <div class="field">
+            <label for="logDeerSeen">Deer Seen</label>
+            <input type="number" id="logDeerSeen" min="0" step="1" value="0" />
+          </div>
+          <div class="field">
+            <label for="logShots">Shots Taken</label>
+            <input type="number" id="logShots" min="0" step="1" value="0" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="logSuccess">Tag Filled?</label>
+          <select id="logSuccess">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="logNotes">Notes (wind, stand, behavior, etc.)</label>
+          <textarea id="logNotes" rows="3" placeholder="Example: North wind, sat pine/clearcut corner, heavy cruising 9:30–11:00."></textarea>
+        </div>
+
+        <button id="logSaveBtn">Save Hunt</button>
+        <button id="logClearBtn" class="secondary-btn">Clear All Logs</button>
+        <p id="logError" class="error" style="display:none;"></p>
+      </section>
+
+      <section class="card" id="logStatsCard" style="display:none;">
+        <h2>Stats from Your Logs</h2>
+        <p id="logStats"></p>
+      </section>
+
+      <section class="card" id="logListCard" style="display:none;">
+        <h2>Saved Hunts</h2>
+        <div id="logList"></div>
+      </section>
+    </section>
+
+    <!-- ========== TAB: CHECKLIST ========== -->
+    <section class="tab-panel hidden" data-tab-panel="checklist">
+      <section class="card">
+        <h2>Gear & Pre-Hunt Checklist</h2>
+        <p class="hint">
+          Checked items are remembered on this device. Great quick-check before you leave camp or the truck.
+        </p>
+
+        <div class="checklist-grid" id="checklist">
+          <div>
+            <h3>Weapon & Ammo</h3>
+            <label><input type="checkbox" id="cl-rifle" /> Rifle / bow</label>
+            <label><input type="checkbox" id="cl-ammo" /> Ammo / arrows</label>
+            <label><input type="checkbox" id="cl-release" /> Release / sling</label>
+            <label><input type="checkbox" id="cl-rangefinder" /> Rangefinder</label>
+          </div>
+          <div>
+            <h3>Essentials</h3>
+            <label><input type="checkbox" id="cl-license" /> License / tags</label>
+            <label><input type="checkbox" id="cl-phone" /> Phone charged</label>
+            <label><input type="checkbox" id="cl-headlamp" /> Headlamp + batteries</label>
+            <label><input type="checkbox" id="cl-knife" /> Knife</label>
+            <label><input type="checkbox" id="cl-water" /> Water / snacks</label>
+          </div>
+          <div>
+            <h3>Clothing & Scent</h3>
+            <label><input type="checkbox" id="cl-layers" /> Proper layers</label>
+            <label><input type="checkbox" id="cl-rain" /> Rain gear (if needed)</label>
+            <label><input type="checkbox" id="cl-scent" /> Scent control / cover</label>
+            <label><input type="checkbox" id="cl-gloves" /> Gloves / beanie</label>
+          </div>
+          <div>
+            <h3>Stand & Safety</h3>
+            <label><input type="checkbox" id="cl-safetyHarness" /> Safety harness</label>
+            <label><input type="checkbox" id="cl-lineman" /> Lineman’s belt / tether</label>
+            <label><input type="checkbox" id="cl-strap" /> Extra straps / rope</label>
+            <label><input type="checkbox" id="cl-map" /> Map / onX downloaded</label>
+          </div>
+        </div>
+
+        <button id="checklistClearBtn" class="secondary-btn">
+          Clear Checklist (this device)
+        </button>
+      </section>
     </section>
 
     <footer>
       <p>
-        Weather data from Open-Meteo (no API key). Rut model based on GA DNR rut map
-        (Washington County peak Oct 27–Nov 2) and simple second-rut estimate.
-        This is a helper tool – not a guarantee. Always hunt safe and legal.
+        Weather from Open-Meteo. Rut model based on Georgia rut map (Washington County peak Oct 27–Nov 2, plus estimated second rut).
+        This site is a helper tool only – always hunt safely and within regulations.
       </p>
     </footer>
   </div>
