@@ -1,5 +1,5 @@
-// Davisboro Hunt App
-// Map + waypoints + deer odds + 7-day planner
+// Davisboro Hunt Console
+// Map + waypoints + deer odds + moon phase + sunrise/sunset + 7-day planner + stand wind matching
 
 const defaultLat = 32.97904;
 const defaultLon = -82.60791;
@@ -7,6 +7,13 @@ const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
 
 // ✅ Your MapTiler key (satellite layer)
 const MAPTILER_KEY = "dKj67SEDLftsSLKxGfjB";
+
+// 🌙 Moon phase API (ViewBits – no key needed, light rate limits)
+// Docs: https://viewbits.com/docs/moon-phase-api-documentation
+const MOON_PHASE_API_URL = "https://api.viewbits.com/v1/moonphase";
+
+// Simple in-memory cache for moon results keyed by date ("YYYY-MM-DD")
+const moonCache = new Map();
 
 function $(id) {
   return document.getElementById(id);
@@ -18,6 +25,10 @@ function clamp(x, a, b) {
 
 function toF(c) {
   return (c * 9) / 5 + 32;
+}
+
+function formatDateISO(date) {
+  return date.toISOString().slice(0, 10);
 }
 
 function classifyScore(score) {
@@ -33,6 +44,46 @@ function scoreLabel(score) {
   if (cls === "good") return "👍 Good – solid odds.";
   if (cls === "ok") return "🤔 Okay – not prime, but could produce.";
   return "😬 Tough – low odds unless you’re after a specific buck.";
+}
+
+function scoreHeadline(score) {
+  const cls = classifyScore(score);
+  if (cls === "great") return "Prime window";
+  if (cls === "good") return "Worth hunting";
+  if (cls === "ok") return "Borderline";
+  return "Tough conditions";
+}
+
+function degreeToCompass(deg) {
+  if (deg == null || isNaN(deg)) return "";
+  const dirs = [
+    "N",
+    "NNE",
+    "NE",
+    "ENE",
+    "E",
+    "ESE",
+    "SE",
+    "SSE",
+    "S",
+    "SSW",
+    "SW",
+    "WSW",
+    "W",
+    "WNW",
+    "NW",
+    "NNW"
+  ];
+  const idx = Math.round(((deg % 360) / 22.5)) % 16;
+  return dirs[idx];
+}
+
+function shortClock(date) {
+  if (!date) return "";
+  return date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit"
+  });
 }
 
 // --- Rut + factors ---
@@ -147,15 +198,16 @@ function prettyPressureLevel(p) {
   return "medium pressure";
 }
 
-// --- Weather helpers ---
+// --- Weather helpers (Open-Meteo) ---
 
 async function fetchWeather(lat, lon, date) {
-  const dateStr = date.toISOString().slice(0, 10);
+  const dateStr = formatDateISO(date);
   const params = new URLSearchParams({
     latitude: String(lat),
     longitude: String(lon),
     hourly: "temperature_2m,wind_speed_10m,precipitation,pressure_msl",
-    daily: "temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max",
+    daily:
+      "temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant,sunrise,sunset",
     timezone: "auto",
     start_date: dateStr,
     end_date: dateStr
@@ -199,6 +251,64 @@ function pickHourlyForTime(data, date, timeKey) {
   };
 }
 
+// --- Moon helpers (ViewBits Moon Phase API) ---
+
+function describeMoonForHunting(phase, illumNum) {
+  if (illumNum == null || isNaN(illumNum)) {
+    return "Moon factor is minor vs wind, pressure, and rut – focus more on those.";
+  }
+
+  if (illumNum >= 85) {
+    return "Very bright nights can pull feeding into the night; watch for mid-morning or mid-day movement near cover and bedding edges.";
+  }
+  if (illumNum <= 15) {
+    return "Dark moon nights keep deer tight to cover but often on their feet closer to dawn and last light.";
+  }
+  if (illumNum >= 45 && illumNum <= 70) {
+    return "Balanced moonlight – expect classic morning/evening movement with some bonus mid-session activity on good weather days.";
+  }
+  return "Moderate moonlight – not usually a game-changer by itself, but it can nudge activity toward the edges of daylight.";
+}
+
+// Get moon data for a specific calendar date
+async function fetchMoonPhaseForDate(date) {
+  const dateStr = formatDateISO(date);
+  if (moonCache.has(dateStr)) {
+    return moonCache.get(dateStr);
+  }
+
+  const url = MOON_PHASE_API_URL + "?startdate=" + dateStr;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Moon phase request failed: " + res.status);
+  const arr = await res.json();
+  if (!Array.isArray(arr) || !arr.length) return null;
+  const exact = arr.find((x) => x.date === dateStr) || arr[3] || arr[0];
+  moonCache.set(dateStr, exact);
+  return exact;
+}
+
+// Get a window of moon data around a start date for planner (7 days)
+async function fetchMoonPhaseForPlanner(startDate, days) {
+  const center = new Date(startDate);
+  center.setDate(center.getDate() + Math.floor(days / 2)); // start+3 for 7 days
+  const centerStr = formatDateISO(center);
+  const url = MOON_PHASE_API_URL + "?startdate=" + centerStr;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Moon phase planner request failed: " + res.status);
+  const arr = await res.json();
+  const map = {};
+  if (Array.isArray(arr)) {
+    for (const item of arr) {
+      if (item && item.date) {
+        map[item.date] = item;
+        moonCache.set(item.date, item);
+      }
+    }
+  }
+  return map;
+}
+
+// Build composite score (rut + time + weather + pressure)
 function buildLiveScorePieces(params) {
   const {
     date,
@@ -256,6 +366,7 @@ const waypointTypeStyles = {
   Feeder: { color: "#f97316" },
   Stand: { color: "#22c55e" },
   "Ground Blind": { color: "#a16207" },
+  TrailCam: { color: "#a855f7" }, // internal convenience key
   "Trail Cam": { color: "#a855f7" },
   Other: { color: "#38bdf8" }
 };
@@ -266,6 +377,12 @@ let addingWaypoint = false;
 const waypointMarkers = new Map();
 let waypointData = [];
 let editingWaypointId = null;
+
+// Planner wind / date used for stand matching
+let currentPlannerWindDeg = null;
+let currentPlannerDateText = "";
+
+// --- Map init ---
 
 function initMap() {
   map = L.map("map").setView([defaultLat, defaultLon], 14);
@@ -340,19 +457,21 @@ function buildLegend() {
   const legend = $("map-legend");
   if (!legend) return;
   legend.innerHTML = "";
-  Object.keys(waypointTypeStyles).forEach((type) => {
-    const style = waypointTypeStyles[type];
-    const div = document.createElement("div");
-    div.className = "legend-item";
-    const swatch = document.createElement("div");
-    swatch.className = "legend-swatch";
-    swatch.style.backgroundColor = style.color;
-    const label = document.createElement("span");
-    label.textContent = type;
-    div.appendChild(swatch);
-    div.appendChild(label);
-    legend.appendChild(div);
-  });
+  ["Stand", "Ground Blind", "Feeder", "Trail Cam", "Other"].forEach(
+    (type) => {
+      const style = waypointTypeStyles[type] || waypointTypeStyles.Other;
+      const div = document.createElement("div");
+      div.className = "legend-item";
+      const swatch = document.createElement("div");
+      swatch.className = "legend-swatch";
+      swatch.style.backgroundColor = style.color;
+      const label = document.createElement("span");
+      label.textContent = type;
+      div.appendChild(swatch);
+      div.appendChild(label);
+      legend.appendChild(div);
+    }
+  );
 }
 
 function syncCoordInputs(lat, lon, alsoPlanner) {
@@ -445,7 +564,14 @@ async function runLiveOdds() {
       pressureLevel
     });
 
-    renderLiveResults(pieces, vals, h);
+    let moonInfo = null;
+    try {
+      moonInfo = await fetchMoonPhaseForDate(date);
+    } catch (moonErr) {
+      console.warn("Moon phase fetch failed:", moonErr);
+    }
+
+    renderLiveResults(pieces, vals, h, moonInfo);
   } catch (err) {
     console.error(err);
     renderLiveError(err);
@@ -454,15 +580,24 @@ async function runLiveOdds() {
   }
 }
 
-function renderLiveResults(pieces, vals, hourly) {
+function renderLiveResults(pieces, vals, hourly, moonInfo) {
   const badge = $("score-badge");
   const bar = $("score-bar");
   const label = $("score-label");
   const factorGrid = $("factor-grid");
   const analysisNote = $("analysis-note");
 
-  const { score, phase, rutF, timeF, tempFScore, windF, precipF, pressF, pressureHpa } =
-    pieces;
+  const {
+    score,
+    phase,
+    rutF,
+    timeF,
+    tempFScore,
+    windF,
+    precipF,
+    pressF,
+    pressureHpa
+  } = pieces;
 
   const cls = classifyScore(score);
   badge.className = "score-badge " + cls;
@@ -476,6 +611,23 @@ function renderLiveResults(pieces, vals, hourly) {
   const tempF = toF(hourly.tempC);
   const windMph = hourly.windMs * 2.23694;
   const precipMm = hourly.precipMm ?? 0;
+
+  // Parse moon info (if available)
+  let moonPhaseText = null;
+  let moonIllumNum = null;
+  if (moonInfo && moonInfo.phase) {
+    const illumRaw = moonInfo.illumination;
+    if (typeof illumRaw === "number") {
+      moonIllumNum = illumRaw * (illumRaw <= 1 ? 100 : 1); // handle 0.4 vs 40
+    } else if (typeof illumRaw === "string") {
+      moonIllumNum = parseFloat(illumRaw);
+    }
+    const illumLabel =
+      moonIllumNum != null && !isNaN(moonIllumNum)
+        ? `${moonIllumNum.toFixed(1)}%`
+        : moonInfo.illumination || "";
+    moonPhaseText = `${moonInfo.phase} (${illumLabel})`;
+  }
 
   const factors = [
     {
@@ -512,6 +664,14 @@ function renderLiveResults(pieces, vals, hourly) {
       detail: "Pressure factor " + Math.round(pressF * 100) + "%"
     }
   ];
+
+  if (moonPhaseText) {
+    factors.push({
+      title: "Moon",
+      value: moonPhaseText,
+      detail: describeMoonForHunting(moonInfo.phase, moonIllumNum)
+    });
+  }
 
   for (const f of factors) {
     const div = document.createElement("div");
@@ -571,6 +731,10 @@ function renderLiveResults(pieces, vals, hourly) {
     );
   }
 
+  if (moonPhaseText && moonIllumNum != null && !isNaN(moonIllumNum)) {
+    notes.push(describeMoonForHunting(moonInfo.phase, moonIllumNum));
+  }
+
   analysisNote.textContent = notes.join(" ");
 }
 
@@ -612,7 +776,9 @@ function loadWaypointsFromStorage() {
 function saveWaypointsToStorage() {
   try {
     localStorage.setItem("hunt_waypoints_v1", JSON.stringify(waypointData));
-  } catch {}
+  } catch {
+    // ignore storage errors
+  }
 }
 
 function createWaypoint(fields) {
@@ -627,7 +793,9 @@ function createWaypoint(fields) {
     type: fields.type || "Stand",
     lat: fields.lat,
     lon: fields.lon,
-    notes: fields.notes || ""
+    notes: fields.notes || "",
+    bestWind: fields.bestWind || "",
+    terrainTag: fields.terrainTag || ""
   };
 }
 
@@ -655,6 +823,61 @@ function removeWaypointMarker(id) {
   waypointMarkers.delete(id);
 }
 
+function windStringToDeg(dir) {
+  switch (dir) {
+    case "N":
+      return 0;
+    case "NE":
+      return 45;
+    case "E":
+      return 90;
+    case "SE":
+      return 135;
+    case "S":
+      return 180;
+    case "SW":
+      return 225;
+    case "W":
+      return 270;
+    case "NW":
+      return 315;
+    default:
+      return null;
+  }
+}
+
+function computeStandMatch(bestWind, actualDeg) {
+  const idealDeg = windStringToDeg(bestWind);
+  if (idealDeg == null || actualDeg == null || isNaN(actualDeg)) return null;
+
+  let diff = Math.abs(actualDeg - idealDeg);
+  if (diff > 180) diff = 360 - diff;
+
+  let label = "Poor";
+  let cls = "bad";
+  let score = 0;
+  let text = "Wind is not ideal; only hunt if access is bulletproof.";
+
+  if (diff <= 30) {
+    label = "Great";
+    cls = "great";
+    score = 3;
+    text = "Wind almost perfect for this stand – great choice if other factors line up.";
+  } else if (diff <= 60) {
+    label = "Good";
+    cls = "good";
+    score = 2;
+    text = "Wind is workable – solid option if you manage entry/exit carefully.";
+  } else if (diff <= 90) {
+    label = "Okay";
+    cls = "ok";
+    score = 1;
+    text = "Borderline wind – might work if pressure is low and deer aren’t edgy.";
+  }
+
+  return { label, cls, score, text, diff };
+}
+
 function renderWaypointTable() {
   const tbody = $("waypoint-list");
   if (!tbody) return;
@@ -663,9 +886,9 @@ function renderWaypointTable() {
   if (!waypointData.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 4;
+    td.colSpan = 5;
     td.textContent =
-      "No waypoints yet. Turn on “Add waypoint” and tap the map, then save here.";
+      "No waypoints yet. Turn on “Add waypoint”, click the map, then save details here.";
     tr.appendChild(td);
     tbody.appendChild(tr);
     return;
@@ -676,18 +899,42 @@ function renderWaypointTable() {
     tr.dataset.id = wp.id;
 
     const tdName = document.createElement("td");
-    const pill = document.createElement("span");
-    pill.className = "pill";
-    pill.textContent = wp.type;
+    const pillType = document.createElement("span");
+    pillType.className = "pill";
+    pillType.textContent = wp.type;
     tdName.appendChild(document.createTextNode((wp.name || "(unnamed)") + " "));
-    tdName.appendChild(pill);
+    tdName.appendChild(pillType);
 
     const tdCoords = document.createElement("td");
-    tdCoords.textContent =
-      wp.lat.toFixed(5) + ", " + wp.lon.toFixed(5);
+    tdCoords.textContent = wp.lat.toFixed(5) + ", " + wp.lon.toFixed(5);
 
-    const tdNotes = document.createElement("td");
-    tdNotes.textContent = wp.notes || "";
+    const tdSetup = document.createElement("td");
+    const terrainLabel = wp.terrainTag
+      ? prettyTerrain(wp.terrainTag)
+      : "No terrain tag";
+    const bestWindLabel = wp.bestWind
+      ? `Best wind: ${wp.bestWind}`
+      : "Best wind: any";
+    tdSetup.textContent = terrainLabel + " • " + bestWindLabel;
+
+    const tdMatch = document.createElement("td");
+    if (
+      currentPlannerWindDeg != null &&
+      wp.bestWind &&
+      windStringToDeg(wp.bestWind) != null
+    ) {
+      const match = computeStandMatch(wp.bestWind, currentPlannerWindDeg);
+      if (match) {
+        const pill = document.createElement("span");
+        pill.className = "pill " + match.cls;
+        pill.textContent = `${match.label} wind`;
+        tdMatch.appendChild(pill);
+      } else {
+        tdMatch.textContent = "—";
+      }
+    } else {
+      tdMatch.textContent = "Set best wind + run plan";
+    }
 
     const tdActions = document.createElement("td");
     const zoomBtn = document.createElement("button");
@@ -716,7 +963,8 @@ function renderWaypointTable() {
 
     tr.appendChild(tdName);
     tr.appendChild(tdCoords);
-    tr.appendChild(tdNotes);
+    tr.appendChild(tdSetup);
+    tr.appendChild(tdMatch);
     tr.appendChild(tdActions);
     tbody.appendChild(tr);
   });
@@ -729,6 +977,8 @@ function onWaypointFormSubmit(e) {
   const latVal = parseFloat($("wp-lat").value);
   const lonVal = parseFloat($("wp-lon").value);
   const notes = $("wp-notes").value.trim();
+  const bestWind = $("wp-best-wind").value || "";
+  const terrainTag = $("wp-terrain").value || "";
 
   if (isNaN(latVal) || isNaN(lonVal)) {
     alert("Please click the map or enter lat/lon for the waypoint.");
@@ -743,11 +993,21 @@ function onWaypointFormSubmit(e) {
       waypointData[idx].lat = latVal;
       waypointData[idx].lon = lonVal;
       waypointData[idx].notes = notes;
+      waypointData[idx].bestWind = bestWind;
+      waypointData[idx].terrainTag = terrainTag;
       removeWaypointMarker(editingWaypointId);
       addWaypointMarker(waypointData[idx]);
     }
   } else {
-    const wp = createWaypoint({ name, type, lat: latVal, lon: lonVal, notes });
+    const wp = createWaypoint({
+      name,
+      type,
+      lat: latVal,
+      lon: lonVal,
+      notes,
+      bestWind,
+      terrainTag
+    });
     waypointData.push(wp);
     addWaypointMarker(wp);
   }
@@ -760,6 +1020,8 @@ function onWaypointFormSubmit(e) {
 function resetWaypointForm() {
   $("wp-name").value = "";
   $("wp-type").value = "Stand";
+  $("wp-best-wind").value = "";
+  $("wp-terrain").value = "";
   $("wp-lat").value = "";
   $("wp-lon").value = "";
   $("wp-notes").value = "";
@@ -785,6 +1047,8 @@ function attachWaypointTableHandlers() {
     } else if (action === "edit") {
       $("wp-name").value = wp.name || "";
       $("wp-type").value = wp.type || "Stand";
+      $("wp-best-wind").value = wp.bestWind || "";
+      $("wp-terrain").value = wp.terrainTag || "";
       $("wp-lat").value = wp.lat;
       $("wp-lon").value = wp.lon;
       $("wp-notes").value = wp.notes || "";
@@ -802,7 +1066,7 @@ function attachWaypointTableHandlers() {
   });
 }
 
-// --- Planner ---
+// --- Planner & stand recommendations ---
 
 function plannerWeatherDesc(hiF, loF, windMph, precip) {
   const pieces = [];
@@ -853,7 +1117,7 @@ async function runPlanner() {
       latitude: String(lat),
       longitude: String(lon),
       daily:
-        "temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max",
+        "temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant,sunrise,sunset",
       timezone: "auto",
       start_date: startStr,
       end_date: endDate.toISOString().slice(0, 10)
@@ -863,9 +1127,19 @@ async function runPlanner() {
     if (!res.ok) throw new Error("Planner weather request failed");
     const data = await res.json();
 
-    renderPlannerRows(data, terrain, pressureLevel);
+    let moonMap = null;
+    try {
+      const times = data.daily?.time || [];
+      moonMap = await fetchMoonPhaseForPlanner(startDate, times.length || 7);
+    } catch (moonErr) {
+      console.warn("Planner moon phase fetch failed:", moonErr);
+    }
+
+    renderPlannerRows(data, terrain, pressureLevel, moonMap);
   } catch (err) {
     console.error(err);
+    currentPlannerWindDeg = null;
+    currentPlannerDateText = "";
     const tbody = $("planner-rows");
     tbody.innerHTML = "";
     const tr = document.createElement("tr");
@@ -874,30 +1148,44 @@ async function runPlanner() {
     td.textContent = "Could not load planner weather.";
     tr.appendChild(td);
     tbody.appendChild(tr);
+    updateStandRecommendations();
   } finally {
     btn.disabled = false;
     btn.textContent = "📆 Generate 7-day plan";
   }
 }
 
-function renderPlannerRows(data, terrain, pressureLevel) {
+function renderPlannerRows(data, terrain, pressureLevel, moonMap) {
   const tbody = $("planner-rows");
   tbody.innerHTML = "";
 
   const times = data.daily.time || [];
+  const sunriseArr = data.daily.sunrise || [];
+  const sunsetArr = data.daily.sunset || [];
+  const windDirArr = data.daily.wind_direction_10m_dominant || [];
+
+  currentPlannerWindDeg = null;
+  currentPlannerDateText = "";
+
   for (let i = 0; i < times.length; i++) {
     const date = new Date(times[i]);
+    const dateKey = formatDateISO(date);
     const hiF = toF(data.daily.temperature_2m_max[i]);
     const loF = toF(data.daily.temperature_2m_min[i]);
     const windMph = data.daily.wind_speed_10m_max[i] * 2.23694;
     const precip = data.daily.precipitation_sum[i];
 
+    const sunrise = sunriseArr[i] ? new Date(sunriseArr[i]) : null;
+    const sunset = sunsetArr[i] ? new Date(sunsetArr[i]) : null;
+    const windDirDeg = windDirArr[i];
+    const windDirCard = degreeToCompass(windDirDeg);
+
     const { phase, factor: rutF } = rutPhaseForDate(date);
     const tempFScore = tempFactorF((hiF + loF) / 2);
     const windF = windFactor(windMph);
     const precipF = precipFactor(precip);
-    const pressF = 1.0; // we don't have daily pressure here
-    const timeF = 0.95; // assume focusing on morning/evening
+    const pressF = 1.0; // no daily pressure here
+    const timeF = 0.95; // assume prime morning/evening focus
     const terrainF =
       terrain === "pines" ? 1.0 : terrain === "mixed" ? 0.95 : 0.9;
     const pressurePenalty =
@@ -916,6 +1204,22 @@ function renderPlannerRows(data, terrain, pressureLevel) {
 
     score = clamp(Math.round(score), 0, 100);
 
+    // capture wind for stand matching on first row
+    if (i === 0) {
+      currentPlannerWindDeg = windDirDeg;
+      currentPlannerDateText = date.toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric"
+      });
+    }
+
+    // Moon data for this date (if available)
+    let moonItem = null;
+    if (moonMap && moonMap[dateKey]) {
+      moonItem = moonMap[dateKey];
+    }
+
     const tr = document.createElement("tr");
 
     const dateTd = document.createElement("td");
@@ -932,10 +1236,32 @@ function renderPlannerRows(data, terrain, pressureLevel) {
     tempTd.textContent = `${Math.round(hiF)} / ${Math.round(loF)}°`;
 
     const windTd = document.createElement("td");
-    windTd.textContent = `${Math.round(windMph)} mph`;
+    let windText = `${Math.round(windMph)} mph`;
+    if (windDirCard) {
+      windText += ` (${windDirCard})`;
+    }
+    windTd.textContent = windText;
 
     const weatherTd = document.createElement("td");
-    weatherTd.textContent = plannerWeatherDesc(hiF, loF, windMph, precip);
+    let weatherText = plannerWeatherDesc(hiF, loF, windMph, precip);
+    if (sunrise && sunset) {
+      weatherText += ` • SR ${shortClock(sunrise)} / SS ${shortClock(sunset)}`;
+    }
+    if (moonItem && moonItem.phase) {
+      const illumRaw = moonItem.illumination;
+      let illumNum = null;
+      if (typeof illumRaw === "number") {
+        illumNum = illumRaw * (illumRaw <= 1 ? 100 : 1);
+      } else if (typeof illumRaw === "string") {
+        illumNum = parseFloat(illumRaw);
+      }
+      const illumLabel =
+        illumNum != null && !isNaN(illumNum)
+          ? `${illumNum.toFixed(1)}%`
+          : moonItem.illumination || "";
+      weatherText += ` • Moon: ${moonItem.phase} (${illumLabel})`;
+    }
+    weatherTd.textContent = weatherText;
 
     const focusTd = document.createElement("td");
     focusTd.textContent = plannerFocusSuggestion(hiF, loF, windMph, precip);
@@ -956,6 +1282,208 @@ function renderPlannerRows(data, terrain, pressureLevel) {
 
     tbody.appendChild(tr);
   }
+
+  renderWaypointTable();
+  updateStandRecommendations();
+}
+
+function updateStandRecommendations() {
+  const container = $("stand-recos");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const header = document.createElement("div");
+  header.className = "stand-recos-header";
+
+  if (!waypointData.length) {
+    header.textContent =
+      "Add stands, blinds, feeders, and trail cams with best wind tags to see recommendations here.";
+    container.appendChild(header);
+    return;
+  }
+
+  if (currentPlannerWindDeg == null || isNaN(currentPlannerWindDeg)) {
+    header.textContent =
+      "Run the 7-day planner to see which stands line up best with the dominant wind.";
+    container.appendChild(header);
+    return;
+  }
+
+  header.textContent = `Stand recommendations for ${currentPlannerDateText} (dominant wind ${degreeToCompass(
+    currentPlannerWindDeg
+  )}).`;
+  container.appendChild(header);
+
+  const recs = [];
+
+  waypointData.forEach((wp) => {
+    if (!wp.bestWind || !windStringToDeg(wp.bestWind)) return;
+    const match = computeStandMatch(wp.bestWind, currentPlannerWindDeg);
+    if (!match) return;
+    recs.push({ wp, match });
+  });
+
+  if (!recs.length) {
+    const p = document.createElement("div");
+    p.className = "stand-recos-header";
+    p.textContent =
+      "Set a best wind for each stand to get personalized recommendations.";
+    container.appendChild(p);
+    return;
+  }
+
+  recs.sort((a, b) => b.match.score - a.match.score || a.match.diff - b.match.diff);
+  const top = recs.slice(0, 3);
+
+  const grid = document.createElement("div");
+  grid.className = "stand-recos-grid";
+
+  top.forEach(({ wp, match }) => {
+    const card = document.createElement("div");
+    card.className = "stand-card";
+
+    const headerRow = document.createElement("div");
+    headerRow.className = "stand-card-header";
+
+    const title = document.createElement("div");
+    title.className = "stand-card-title";
+    title.textContent = wp.name || "(unnamed)";
+
+    const right = document.createElement("div");
+    const typeSpan = document.createElement("div");
+    typeSpan.className = "stand-card-type";
+    typeSpan.textContent = wp.type;
+    const pill = document.createElement("span");
+    pill.className = "pill " + match.cls;
+    pill.textContent = `${match.label} wind`;
+    right.appendChild(typeSpan);
+    right.appendChild(pill);
+
+    headerRow.appendChild(title);
+    headerRow.appendChild(right);
+
+    const body = document.createElement("div");
+    body.className = "stand-card-body";
+    const coordsText = `${wp.lat.toFixed(5)}, ${wp.lon.toFixed(5)}`;
+    const terrainLabel = wp.terrainTag ? prettyTerrain(wp.terrainTag) : "no terrain tag";
+    body.textContent =
+      `${coordsText} • ${terrainLabel} • best wind ${wp.bestWind || "any"}. ` +
+      match.text;
+
+    card.appendChild(headerRow);
+    card.appendChild(body);
+    grid.appendChild(card);
+  });
+
+  container.appendChild(grid);
+}
+
+// --- Today at a Glance ---
+
+async function updateTodaySummary() {
+  const rutMain = $("today-rut-main");
+  const rutSub = $("today-rut-sub");
+  const weatherMain = $("today-weather-main");
+  const weatherSub = $("today-weather-sub");
+  const windMain = $("today-wind-main");
+  const windSub = $("today-wind-sub");
+  const moonMain = $("today-moon-main");
+  const moonSub = $("today-moon-sub");
+  const scorePill = $("today-score-pill");
+  const todayComment = $("today-comment");
+
+  const { lat, lon } = getCoordsFromInputs("live-lat", "live-lon");
+  const today = new Date();
+
+  try {
+    const data = await fetchWeather(lat, lon, today);
+    const hiC = data.daily.temperature_2m_max[0];
+    const loC = data.daily.temperature_2m_min[0];
+    const hiF = toF(hiC);
+    const loF = toF(loC);
+    const windMph = data.daily.wind_speed_10m_max[0] * 2.23694;
+    const windDirDeg = data.daily.wind_direction_10m_dominant[0];
+    const windDirCard = degreeToCompass(windDirDeg);
+    const precip = data.daily.precipitation_sum[0];
+
+    const sunrise = data.daily.sunrise?.[0]
+      ? new Date(data.daily.sunrise[0])
+      : null;
+    const sunset = data.daily.sunset?.[0]
+      ? new Date(data.daily.sunset[0])
+      : null;
+
+    const { phase } = rutPhaseForDate(today);
+
+    // approximate score using daily averages
+    const avgTempF = (hiF + loF) / 2;
+    const pieces = buildLiveScorePieces({
+      date: today,
+      timeKey: "evening",
+      tempF: avgTempF,
+      windMph,
+      precipMm: precip,
+      pressureHpa: null,
+      terrain: "mixed",
+      pressureLevel: "medium"
+    });
+
+    let moonInfo = null;
+    try {
+      moonInfo = await fetchMoonPhaseForDate(today);
+    } catch (moonErr) {
+      console.warn("Today moon fetch failed:", moonErr);
+    }
+
+    rutMain.textContent = phase;
+    rutSub.textContent = "GA coastal plain rut model";
+
+    weatherMain.textContent = `${Math.round(hiF)}° / ${Math.round(loF)}°F`;
+    let weatherExtra = `Rain ${precip.toFixed(1)} mm`;
+    if (sunrise && sunset) {
+      weatherExtra += ` • SR ${shortClock(sunrise)} / SS ${shortClock(sunset)}`;
+    }
+    weatherSub.textContent = weatherExtra;
+
+    windMain.textContent = `${Math.round(windMph)} mph${
+      windDirCard ? " " + windDirCard : ""
+    }`;
+    windSub.textContent = "Dominant daily wind";
+
+    if (moonInfo && moonInfo.phase) {
+      const illumRaw = moonInfo.illumination;
+      let illumNum = null;
+      if (typeof illumRaw === "number") {
+        illumNum = illumRaw * (illumRaw <= 1 ? 100 : 1);
+      } else if (typeof illumRaw === "string") {
+        illumNum = parseFloat(illumRaw);
+      }
+      const illumLabel =
+        illumNum != null && !isNaN(illumNum)
+          ? `${illumNum.toFixed(1)}% lit`
+          : moonInfo.illumination || "";
+      moonMain.textContent = moonInfo.phase;
+      moonSub.textContent = illumLabel;
+    } else {
+      moonMain.textContent = "Unknown";
+      moonSub.textContent = "Moon API error";
+    }
+
+    const cls = classifyScore(pieces.score);
+    scorePill.className = "pill " + (cls === "great" ? "good" : cls); // pill colors
+    scorePill.textContent = `${pieces.score} / 100 • ${scoreHeadline(
+      pieces.score
+    )}`;
+
+    todayComment.textContent =
+      "Score combines rut phase, temp, wind, rain and moon for today at your hunt center.";
+  } catch (err) {
+    console.error(err);
+    scorePill.className = "pill bad";
+    scorePill.textContent = "Error";
+    todayComment.textContent =
+      "Could not load today’s weather – check connection or coordinates.";
+  }
 }
 
 // --- Geolocation ---
@@ -974,6 +1502,8 @@ function useMyLocation() {
         centerMarker.setLatLng([lat, lon]);
         map.setView([lat, lon], 15);
       }
+      // Refresh today summary with new coords
+      updateTodaySummary();
     },
     (err) => {
       console.warn(err);
@@ -987,7 +1517,7 @@ function useMyLocation() {
 document.addEventListener("DOMContentLoaded", () => {
   // default dates
   const today = new Date();
-  const iso = today.toISOString().slice(0, 10);
+  const iso = formatDateISO(today);
   const liveDate = $("live-date");
   const planStart = $("plan-start");
   if (liveDate) liveDate.value = iso;
@@ -996,4 +1526,66 @@ document.addEventListener("DOMContentLoaded", () => {
   // default coords
   syncCoordInputs(defaultLat, defaultLon, true);
 
-  // map + way
+  // map + waypoints
+  initMap();
+  attachWaypointTableHandlers();
+
+  // listeners
+  const liveForm = $("live-form");
+  if (liveForm) {
+    liveForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      runLiveOdds();
+    });
+  }
+
+  const btnLoc = $("btn-my-location");
+  if (btnLoc) btnLoc.addEventListener("click", useMyLocation);
+
+  const btnAddWp = $("btn-add-waypoint");
+  if (btnAddWp) {
+    btnAddWp.addEventListener("click", () => {
+      addingWaypoint = !addingWaypoint;
+      btnAddWp.classList.toggle("map-mode-active", addingWaypoint);
+    });
+  }
+
+  const wpForm = $("waypoint-form");
+  if (wpForm) wpForm.addEventListener("submit", onWaypointFormSubmit);
+
+  const btnWpUseCenter = $("wp-use-center");
+  if (btnWpUseCenter) {
+    btnWpUseCenter.addEventListener("click", () => {
+      const { lat, lon } = getCoordsFromInputs("live-lat", "live-lon");
+      syncWaypointCoordInputs(lat, lon);
+    });
+  }
+
+  const btnWpClear = $("wp-clear-all");
+  if (btnWpClear) {
+    btnWpClear.addEventListener("click", () => {
+      if (confirm("Clear ALL waypoints saved on this device?")) {
+        waypointData = [];
+        saveWaypointsToStorage();
+        waypointMarkers.forEach((m) => map.removeLayer(m));
+        waypointMarkers.clear();
+        renderWaypointTable();
+        updateStandRecommendations();
+      }
+    });
+  }
+
+  const planForm = $("planner-form");
+  if (planForm) {
+    planForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      runPlanner();
+    });
+  }
+
+  // initial data
+  loadWaypointsFromStorage();
+  runLiveOdds();
+  runPlanner();
+  updateTodaySummary();
+});
