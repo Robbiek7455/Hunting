@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Davisboro Hunt Map & Deer Odds</title>
+  <title>Davisboro Hunt Console</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Leaflet CSS -->
@@ -13,32 +13,72 @@
     crossorigin=""
   />
 
-  <!-- Your styles -->
+  <!-- App styles -->
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="page">
     <header class="page-header">
-      <h1>Davisboro Hunt Map &amp; Deer Activity</h1>
-      <p>
-        Terrain &amp; satellite map • Stands / feeders / cams • Live deer odds • 7-day planner
-      </p>
+      <h1>Davisboro Hunt Console</h1>
+      <p>Weather • rut • moon • wind • stand matching • interactive map</p>
       <nav class="top-nav">
+        <a href="#today">Today</a>
         <a href="#live">Live Odds</a>
         <a href="#map">Map &amp; Waypoints</a>
-        <a href="#planner">7-Day Planner</a>
+        <a href="#planner">7-Day Plan</a>
       </nav>
     </header>
 
+    <!-- TODAY AT A GLANCE -->
+    <section id="today" class="card card-today">
+      <h2>Today at a Glance</h2>
+      <p class="lead">
+        Quick read on today’s whitetail setup for your Davisboro property: rut window, weather, wind, and moon – all rolled into a hunt score.
+      </p>
+
+      <div class="today-grid">
+        <div class="today-card">
+          <div class="today-label">Rut</div>
+          <div id="today-rut-main" class="today-value">–</div>
+          <div id="today-rut-sub" class="today-sub">GA rut model</div>
+        </div>
+
+        <div class="today-card">
+          <div class="today-label">Weather</div>
+          <div id="today-weather-main" class="today-value">–</div>
+          <div id="today-weather-sub" class="today-sub">Hi / Lo, rain</div>
+        </div>
+
+        <div class="today-card">
+          <div class="today-label">Wind</div>
+          <div id="today-wind-main" class="today-value">–</div>
+          <div id="today-wind-sub" class="today-sub">Dominant daily wind</div>
+        </div>
+
+        <div class="today-card">
+          <div class="today-label">Moon</div>
+          <div id="today-moon-main" class="today-value">–</div>
+          <div id="today-moon-sub" class="today-sub">Phase &amp; brightness</div>
+        </div>
+      </div>
+
+      <div class="today-badge-row">
+        <span id="today-score-pill" class="pill">–</span>
+        <span id="today-comment" class="today-comment">
+          Live score uses rut + weather at your hunt center.
+        </span>
+      </div>
+    </section>
+
     <!-- LIVE ODDS + MAP -->
     <section id="live" class="card">
-      <h2>Live Odds (single sit)</h2>
+      <h2>Live Odds (Single Sit) &amp; Hunt Map</h2>
       <p class="lead">
-        Pick a date, time and setup. The app grabs live weather and gives a 0–100 deer movement score.
+        Pick a date, time, and setup. The console pulls live weather, rut phase, and moon and returns a 0–100 deer movement score.
       </p>
 
       <div class="two-col">
-        <!-- Left: form -->
+        <!-- Left: live odds form -->
         <form id="live-form">
           <div class="field">
             <label for="live-date">Hunt date</label>
@@ -56,7 +96,7 @@
           </div>
 
           <div class="field">
-            <span class="label">Terrain</span>
+            <span class="label">Terrain focus</span>
             <div class="chip-row">
               <label><input type="radio" name="live-terrain" value="pines" checked />Pines / clear-cut</label>
               <label><input type="radio" name="live-terrain" value="hardwoods" />Hardwoods</label>
@@ -90,7 +130,7 @@
             <button type="submit" id="btn-live-run">⚡ Get live odds</button>
           </div>
           <p class="hint">
-            If you leave lat/lon empty, it defaults to your Davisboro property center.
+            Leave lat / lon empty to default to your Davisboro property center.
           </p>
         </form>
 
@@ -100,7 +140,7 @@
             <div>
               <strong>Hunt map</strong>
               <p>
-                Orange pin = hunt center. Turn on “Add waypoint” and tap the map to mark stands, feeders, blinds, or trail cams.
+                Street, terrain, and satellite from MapTiler. Orange marker = hunt center. Turn on “Add waypoint” to mark stands, blinds, feeders, and trail cams.
               </p>
             </div>
             <button type="button" class="secondary small" id="btn-add-waypoint">
@@ -129,9 +169,9 @@
 
     <!-- WAYPOINTS -->
     <section id="map-waypoints" class="card">
-      <h2>Waypoints (stands / feeders / blinds / trail cams)</h2>
+      <h2 id="map">Waypoints &amp; Stand Details</h2>
       <p class="lead">
-        Saved on this device only. Great for quickly seeing what’s where.
+        Save stands, blinds, feeders, and trail cams with best winds and notes. Data is stored in this browser only.
       </p>
 
       <form id="waypoint-form">
@@ -154,6 +194,33 @@
 
         <div class="field two">
           <div>
+            <label for="wp-best-wind">Best wind</label>
+            <select id="wp-best-wind">
+              <option value="">Any / unknown</option>
+              <option value="N">N</option>
+              <option value="NE">NE</option>
+              <option value="E">E</option>
+              <option value="SE">SE</option>
+              <option value="S">S</option>
+              <option value="SW">SW</option>
+              <option value="W">W</option>
+              <option value="NW">NW</option>
+            </select>
+          </div>
+          <div>
+            <label for="wp-terrain">Terrain tag</label>
+            <select id="wp-terrain">
+              <option value="">None</option>
+              <option value="pines">Pines / clear-cut</option>
+              <option value="hardwoods">Hardwoods</option>
+              <option value="ag">Ag / fields / plots</option>
+              <option value="mixed">Mixed</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field two">
+          <div>
             <label for="wp-lat">Latitude</label>
             <input id="wp-lat" type="number" step="0.000001" placeholder="click map to fill" />
           </div>
@@ -165,7 +232,7 @@
 
         <div class="field">
           <label for="wp-notes">Notes</label>
-          <textarea id="wp-notes" placeholder="Best on N wind, enter from south road."></textarea>
+          <textarea id="wp-notes" placeholder="Best with north wind, enter from south road, heavy acorn flat below."></textarea>
         </div>
 
         <div class="button-row">
@@ -173,6 +240,9 @@
           <button type="button" class="secondary small" id="wp-use-center">⬇ Use hunt center</button>
           <button type="button" class="danger small" id="wp-clear-all">🗑 Clear ALL (this device)</button>
         </div>
+        <p class="hint">
+          Tap “Add waypoint mode”, click the map, then refine details here and save.
+        </p>
       </form>
 
       <div class="table-scroll mt-compact">
@@ -181,7 +251,8 @@
             <tr>
               <th>Name / type</th>
               <th>Coords</th>
-              <th>Notes</th>
+              <th>Setup (terrain + wind)</th>
+              <th>Wind match (plan day)</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -190,11 +261,11 @@
       </div>
     </section>
 
-    <!-- 7-DAY PLANNER -->
+    <!-- 7-DAY PLANNER + STAND RECS -->
     <section id="planner" class="card">
       <h2>7-Day Deer Activity Planner</h2>
       <p class="lead">
-        Ranks the next 7 days (0–100) using the same rut + weather model, so you know which days to prioritize.
+        Ranks the next 7 days (0–100) using rut phase, temperature, wind, rain, sunrise/sunset, and moon. Use it to pick your best sits in advance.
       </p>
 
       <form id="planner-form">
@@ -204,7 +275,7 @@
             <input type="date" id="plan-start" required />
           </div>
           <div>
-            <label for="plan-terrain">Terrain</label>
+            <label for="plan-terrain">Terrain focus</label>
             <select id="plan-terrain">
               <option value="pines">Pines / clear-cut</option>
               <option value="hardwoods">Hardwoods</option>
@@ -247,7 +318,7 @@
               <th>Rut phase</th>
               <th>Hi / Lo (°F)</th>
               <th>Wind</th>
-              <th>Weather</th>
+              <th>Weather / Sun / Moon</th>
               <th>Focus</th>
               <th>Score</th>
             </tr>
@@ -255,12 +326,15 @@
           <tbody id="planner-rows"></tbody>
         </table>
       </div>
+
+      <div id="stand-recos" class="stand-recos">
+        <!-- filled by JS with stand recommendations based on plan wind -->
+      </div>
     </section>
 
     <section class="card">
       <p class="hint">
-        Weather by Open-Meteo. Rut timing tuned loosely to Washington Co., GA (late Oct / late Nov).
-        Always follow regs and use your own judgment.
+        Weather by Open-Meteo. Moon phase by ViewBits. This tool is a planning aid – always obey Georgia regulations and use your own judgment in the woods.
       </p>
     </section>
   </div>
@@ -272,7 +346,7 @@
     crossorigin=""
   ></script>
 
-  <!-- Your app logic -->
+  <!-- App logic -->
   <script src="app.js"></script>
 </body>
 </html>
