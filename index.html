@@ -5,14 +5,26 @@
   <title>Deer Activity & Hunt Planner – Davisboro GA</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
+
+  <!-- Leaflet for map feature -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
   <div class="app">
-    <header>
-      <h1>Deer Activity & Hunt Planner</h1>
-      <p class="subtitle">
-        Live weather + rut model + planner for whitetail hunting (tuned for Washington County, GA / pine & clearcut country).
-      </p>
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-icon">🦌</span>
+        <div>
+          <h1>Deer Activity & Hunt Planner</h1>
+          <p class="subtitle">
+            Live weather • Rut model • Planner • Logs • Checklist
+          </p>
+        </div>
+      </div>
     </header>
 
     <!-- Tabs navigation -->
@@ -78,6 +90,19 @@
           </div>
         </div>
 
+        <div id="mapContainer" class="map-card">
+          <div class="map-header">
+            <h3>Map Location</h3>
+            <button id="centerOnInputsBtn" class="chip-btn">Center on coords</button>
+            <button id="copyToPlannerBtn" class="chip-btn">Use for planner</button>
+          </div>
+          <div id="map" class="map"></div>
+          <p class="hint">
+            Drag the pin or tap the map to set your location. The latitude/longitude
+            above update automatically.
+          </p>
+        </div>
+
         <button id="calculateBtn">Fetch Live Weather & Calculate Odds</button>
         <p id="errorText" class="error" style="display:none;"></p>
       </section>
@@ -87,11 +112,15 @@
         <p id="rutPhaseAuto" class="rut-label"></p>
         <p id="weatherSummary"></p>
         <p id="weatherDetails"></p>
+        <p id="weatherSun"></p>
         <p id="weatherFlags"></p>
       </section>
 
       <section class="card" id="resultsCard" style="display:none;">
         <h2>Deer Activity Results</h2>
+        <div class="gauge">
+          <div class="gauge-fill" id="gaugeFill"></div>
+        </div>
         <p class="score" id="scoreText">Score: –</p>
         <p class="chance" id="chanceText">Chance: –</p>
         <p class="badge" id="badgeText"></p>
