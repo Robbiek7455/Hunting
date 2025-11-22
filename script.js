@@ -1,4 +1,4 @@
-// ---------- helpers ----------
+// ---------- constants & helpers ----------
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -23,6 +23,14 @@ function formatTimeShort(isoString) {
   return `${h12}:${mins} ${ampm}`;
 }
 
+const WIND_DIRS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+
+function windDirFromDeg(deg) {
+  if (deg == null || Number.isNaN(deg)) return "";
+  const idx = Math.round(deg / 45) % 8;
+  return WIND_DIRS[idx];
+}
+
 // Rut model for Washington County, GA.
 // Peak: Oct 27 – Nov 2. Second rut ≈ Nov 24 – Nov 30.
 function getRutPhaseForWashingtonGA(date) {
@@ -33,23 +41,23 @@ function getRutPhaseForWashingtonGA(date) {
   const secondEnd = new Date(year, 10, 30);
 
   if (date >= peakStart && date <= peakEnd) {
-    return { id: "rut", label: "Peak rut (Washington County, GA)" };
+    return { id: "rut", label: "Peak rut" };
   }
   if (date >= secondStart && date <= secondEnd) {
-    return { id: "secondRut", label: "Second rut (late November, Washington County, GA)" };
+    return { id: "secondRut", label: "Second rut" };
   }
   if (date < peakStart) {
     const diffDays = Math.round((peakStart - date) / DAY_MS);
     if (diffDays <= 14) {
-      return { id: "pre", label: "Pre-rut (within ~2 weeks of peak)" };
+      return { id: "pre", label: "Pre-rut" };
     }
-    return { id: "early", label: "Early season relative to peak rut" };
+    return { id: "early", label: "Early season" };
   }
   if (date > peakEnd && date < secondStart) {
-    return { id: "post", label: "Post-peak rut trending toward second rut" };
+    return { id: "post", label: "Post-rut" };
   }
   if (date > secondEnd) {
-    return { id: "late", label: "Late season after second rut" };
+    return { id: "late", label: "Late season" };
   }
   return { id: "early", label: "General season" };
 }
@@ -58,13 +66,20 @@ function getRutPhaseForWashingtonGA(date) {
 
 function getBaseFromRut(rutPhase) {
   switch (rutPhase) {
-    case "early": return 45;
-    case "pre": return 55;
-    case "rut": return 65;
-    case "secondRut": return 68;
-    case "post": return 50;
-    case "late": return 45;
-    default: return 50;
+    case "early":
+      return 45;
+    case "pre":
+      return 55;
+    case "rut":
+      return 65;
+    case "secondRut":
+      return 68;
+    case "post":
+      return 50;
+    case "late":
+      return 45;
+    default:
+      return 50;
   }
 }
 
@@ -88,10 +103,14 @@ function getWeatherModifier(flags) {
 
 function getPressureModifier(pressure) {
   switch (pressure) {
-    case "low": return 5;
-    case "medium": return 0;
-    case "high": return -8;
-    default: return 0;
+    case "low":
+      return 5;
+    case "medium":
+      return 0;
+    case "high":
+      return -8;
+    default:
+      return 0;
   }
 }
 
@@ -110,9 +129,12 @@ function getTerrainTips(terrain) {
 }
 
 function getRatingText(score) {
-  if (score >= 75) return "🔥 High odds – this is a sit you don’t want to miss. Stay as long as you can.";
-  if (score >= 60) return "👍 Solid odds – definitely worth hunting hard in your best spot.";
-  if (score >= 50) return "⚖️ Fair odds – a good deer could still show with the right wind and stealth.";
+  if (score >= 75)
+    return "🔥 High odds – this is a sit you don’t want to miss. Stay as long as you can.";
+  if (score >= 60)
+    return "👍 Solid odds – definitely worth hunting hard in your best spot.";
+  if (score >= 50)
+    return "⚖️ Fair odds – a good deer could still show with the right wind and stealth.";
   return "😬 Low odds – maybe treat this as an observation sit or scouting mission.";
 }
 
@@ -126,21 +148,31 @@ function getBadge(score) {
 function buildExtraTips(timeOfDay, rutPhase, flags, allDay) {
   const tips = [];
 
-  if ((rutPhase === "rut" || rutPhase === "secondRut") &&
-      (timeOfDay === "midday" || allDay)) {
-    tips.push("During the rut or second rut, don’t sleep on 10 AM – 2 PM. Cruising bucks can appear out of nowhere.");
+  if (
+    (rutPhase === "rut" || rutPhase === "secondRut") &&
+    (timeOfDay === "midday" || allDay)
+  ) {
+    tips.push(
+      "During the rut or second rut, don’t sleep on 10 AM – 2 PM. Cruising bucks can appear out of nowhere."
+    );
   }
 
   if (flags.coldFront) {
-    tips.push("You’re hunting behind a front – be set up early, as deer may move earlier in the evening and later into the morning.");
+    tips.push(
+      "You’re hunting behind a front – be set up early, as deer may move earlier in the evening and later into the morning."
+    );
   }
 
   if (flags.highWind) {
-    tips.push("With higher winds, cheat down into leeward sides of hills or thicker cover where deer feel more comfortable.");
+    tips.push(
+      "With higher winds, cheat down into leeward sides of hills or thicker cover where deer feel more comfortable."
+    );
   }
 
   if (!tips.length) {
-    tips.push("Play the wind perfectly, keep your entry quiet, and let your best spots rest when the wind is wrong.");
+    tips.push(
+      "Play the wind perfectly, keep your entry quiet, and let your best spots rest when the wind is wrong."
+    );
   }
 
   return tips.join(" ");
@@ -157,7 +189,7 @@ async function fetchWeather(lat, lon, dateStr) {
   const url =
     "https://api.open-meteo.com/v1/forecast" +
     `?latitude=${lat}&longitude=${lon}` +
-    "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset" +
+    "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,winddirection_10m_dominant,sunrise,sunset" +
     "&timezone=auto&temperature_unit=fahrenheit&windspeed_unit=mph&precipitation_unit=inch" +
     `&start_date=${startStr}&end_date=${endStr}`;
 
@@ -182,8 +214,9 @@ async function fetchWeather(lat, lon, dateStr) {
     tMin: daily.temperature_2m_min[idxToday],
     precip: daily.precipitation_sum[idxToday],
     windMax: daily.windspeed_10m_max[idxToday],
+    windDirDeg: daily.winddirection_10m_dominant[idxToday],
     sunrise: daily.sunrise[idxToday],
-    sunset: daily.sunset[idxToday]
+    sunset: daily.sunset[idxToday],
   };
 
   let prev = null;
@@ -194,8 +227,9 @@ async function fetchWeather(lat, lon, dateStr) {
       tMin: daily.temperature_2m_min[idxPrev],
       precip: daily.precipitation_sum[idxPrev],
       windMax: daily.windspeed_10m_max[idxPrev],
+      windDirDeg: daily.winddirection_10m_dominant[idxPrev],
       sunrise: daily.sunrise[idxPrev],
-      sunset: daily.sunset[idxPrev]
+      sunset: daily.sunset[idxPrev],
     };
   }
 
@@ -214,7 +248,7 @@ async function fetchWeatherRange(lat, lon, startDateStr, days) {
   const url =
     "https://api.open-meteo.com/v1/forecast" +
     `?latitude=${lat}&longitude=${lon}` +
-    "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,sunrise,sunset" +
+    "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,winddirection_10m_dominant,sunrise,sunset" +
     "&timezone=auto&temperature_unit=fahrenheit&windspeed_unit=mph&precipitation_unit=inch" +
     `&start_date=${startStr}&end_date=${endStr}`;
 
@@ -242,23 +276,36 @@ function deriveWeatherFlags(today, prev, targetDate) {
   return { recentRain, coldFront, highWind, veryWarm };
 }
 
-// ---------- hunt log (localStorage) ----------
+// ---------- localStorage helpers ----------
 
 const LOG_STORAGE_KEY = "deerHuntLog";
 const CHECKLIST_STORAGE_KEY = "deerChecklist";
+const SPOTS_STORAGE_KEY = "deerSpots";
+const STANDS_STORAGE_KEY = "deerStands";
 
-function loadLog() {
+function loadJson(key, fallback) {
   try {
-    const raw = localStorage.getItem(LOG_STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) || [];
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(fallback) && !Array.isArray(parsed) ? fallback : parsed;
   } catch {
-    return [];
+    return fallback;
   }
 }
 
+function saveJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+// ---------- hunt log ----------
+
+function loadLog() {
+  return loadJson(LOG_STORAGE_KEY, []);
+}
+
 function saveLog(entries) {
-  localStorage.setItem(LOG_STORAGE_KEY, JSON.stringify(entries));
+  saveJson(LOG_STORAGE_KEY, entries);
 }
 
 function renderLog(entries) {
@@ -273,9 +320,8 @@ function renderLog(entries) {
     return;
   }
 
-  // Stats
   const total = entries.length;
-  const successCount = entries.filter(e => e.success === "yes").length;
+  const successCount = entries.filter((e) => e.success === "yes").length;
   const totalDeer = entries.reduce((sum, e) => sum + (e.deerSeen || 0), 0);
 
   const timeCounts = entries.reduce((acc, e) => {
@@ -298,7 +344,7 @@ function renderLog(entries) {
     morning: "Morning",
     midday: "Midday",
     evening: "Evening",
-    allDay: "All-day"
+    allDay: "All-day",
   };
 
   logStats.innerHTML =
@@ -306,16 +352,15 @@ function renderLog(entries) {
     `Tags filled: <strong>${successCount}</strong> (${successRate}% success rate)<br>` +
     `Average deer seen per hunt: <strong>${avgDeer}</strong><br>` +
     (bestTime
-      ? `Most frequently hunted time: <strong>${timeLabels[bestTime]}</strong>`
+      ? `Most often hunted time: <strong>${timeLabels[bestTime]}</strong>`
       : "");
 
   logStatsCard.style.display = "block";
 
-  // List
   logList.innerHTML = "";
   const sorted = [...entries].sort((a, b) => (a.date < b.date ? 1 : -1));
 
-  sorted.forEach(entry => {
+  sorted.forEach((entry) => {
     const div = document.createElement("div");
     div.className = "log-entry";
 
@@ -343,17 +388,11 @@ function renderLog(entries) {
 // ---------- checklist ----------
 
 function loadChecklist() {
-  try {
-    const raw = localStorage.getItem(CHECKLIST_STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) || {};
-  } catch {
-    return {};
-  }
+  return loadJson(CHECKLIST_STORAGE_KEY, {});
 }
 
 function saveChecklist(state) {
-  localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(state));
+  saveJson(CHECKLIST_STORAGE_KEY, state);
 }
 
 function initChecklist() {
@@ -363,7 +402,7 @@ function initChecklist() {
 
   if (container) {
     const inputs = container.querySelectorAll('input[type="checkbox"]');
-    inputs.forEach(input => {
+    inputs.forEach((input) => {
       if (saved[input.id]) {
         input.checked = true;
       }
@@ -379,9 +418,157 @@ function initChecklist() {
     clearBtn.addEventListener("click", () => {
       localStorage.removeItem(CHECKLIST_STORAGE_KEY);
       const inputs = container.querySelectorAll('input[type="checkbox"]');
-      inputs.forEach(i => (i.checked = false));
+      inputs.forEach((i) => (i.checked = false));
     });
   }
+}
+
+// ---------- spots & stands ----------
+
+function loadSpots() {
+  return loadJson(SPOTS_STORAGE_KEY, []);
+}
+
+function saveSpots(spots) {
+  saveJson(SPOTS_STORAGE_KEY, spots);
+}
+
+function loadStands() {
+  return loadJson(STANDS_STORAGE_KEY, []);
+}
+
+function saveStands(stands) {
+  saveJson(STANDS_STORAGE_KEY, stands);
+}
+
+function syncStandSpotOptions(spots) {
+  const select = document.getElementById("standSpot");
+  if (!select) return;
+  const currentValue = select.value;
+
+  select.innerHTML = '<option value="">No specific spot</option>';
+  spots.forEach((spot) => {
+    const opt = document.createElement("option");
+    opt.value = spot.name;
+    opt.textContent = spot.name;
+    select.appendChild(opt);
+  });
+
+  if (spots.some((s) => s.name === currentValue)) {
+    select.value = currentValue;
+  }
+}
+
+function renderSpots(spots) {
+  const list = document.getElementById("spotsList");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  if (!spots.length) {
+    list.textContent = "No spots saved yet.";
+    return;
+  }
+
+  spots.forEach((spot, idx) => {
+    const div = document.createElement("div");
+    div.className = "spot-item";
+    div.dataset.index = String(idx);
+
+    const title = document.createElement("div");
+    title.className = "spot-title";
+    title.textContent = spot.name;
+
+    const meta = document.createElement("div");
+    meta.className = "spot-meta";
+    meta.textContent = `Lat ${spot.lat.toFixed(4)}, Lon ${spot.lon.toFixed(
+      4
+    )} • Terrain: ${spot.terrain} • Pressure: ${spot.pressure}`;
+
+    const actions = document.createElement("div");
+    actions.className = "spot-actions";
+    actions.innerHTML =
+      '<button class="chip-btn spot-use-live">Live odds</button>' +
+      '<button class="chip-btn spot-use-planner">Planner</button>' +
+      '<button class="chip-btn spot-edit">Edit</button>';
+
+    div.appendChild(title);
+    div.appendChild(meta);
+    div.appendChild(actions);
+    list.appendChild(div);
+  });
+}
+
+function renderStands(stands) {
+  const list = document.getElementById("standsList");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  if (!stands.length) {
+    list.textContent = "No stands saved yet.";
+    return;
+  }
+
+  stands.forEach((stand) => {
+    const div = document.createElement("div");
+    div.className = "stand-item";
+
+    const title = document.createElement("div");
+    title.className = "stand-title";
+    title.textContent = stand.name;
+
+    const meta = document.createElement("div");
+    meta.className = "stand-meta";
+    meta.innerHTML =
+      (stand.spotName ? `Spot: <strong>${stand.spotName}</strong><br>` : "") +
+      `Good winds: ${stand.winds.join(", ") || "—"}<br>` +
+      `Terrain: ${stand.terrain}`;
+
+    const notes = document.createElement("div");
+    notes.style.marginTop = "0.15rem";
+    notes.style.opacity = "0.9";
+    notes.style.fontSize = "0.8rem";
+    notes.textContent = stand.notes || "";
+
+    div.appendChild(title);
+    div.appendChild(meta);
+    if (stand.notes) div.appendChild(notes);
+    list.appendChild(div);
+  });
+}
+
+function getRecommendedStandsForWind(windDir, currentLat, currentLon) {
+  const stands = loadStands();
+  const spots = loadSpots();
+  if (!stands.length || !windDir) return [];
+
+  // find nearest spot to current location (if any)
+  let nearestSpot = null;
+  let nearestDist = Infinity;
+  if (currentLat != null && currentLon != null && spots.length) {
+    spots.forEach((s) => {
+      const dLat = s.lat - currentLat;
+      const dLon = s.lon - currentLon;
+      const distSq = dLat * dLat + dLon * dLon;
+      if (distSq < nearestDist) {
+        nearestDist = distSq;
+        nearestSpot = s;
+      }
+    });
+  }
+
+  const useSpotFilter = nearestSpot && nearestDist < 0.02 * 0.02; // rough threshold
+
+  const matches = stands.filter((stand) => {
+    if (!stand.winds || !stand.winds.length) return false;
+    if (!stand.winds.includes(windDir)) return false;
+    if (useSpotFilter && stand.spotName && stand.spotName !== nearestSpot.name)
+      return false;
+    return true;
+  });
+
+  return matches.map((s) => s.name);
 }
 
 // ---------- tabs ----------
@@ -390,11 +577,11 @@ function initTabs() {
   const buttons = document.querySelectorAll(".tab-btn");
   const panels = document.querySelectorAll(".tab-panel");
 
-  buttons.forEach(btn => {
+  buttons.forEach((btn) => {
     btn.addEventListener("click", () => {
       const tab = btn.getAttribute("data-tab");
-      buttons.forEach(b => b.classList.toggle("active", b === btn));
-      panels.forEach(panel => {
+      buttons.forEach((b) => b.classList.toggle("active", b === btn));
+      panels.forEach((panel) => {
         panel.classList.toggle(
           "hidden",
           panel.getAttribute("data-tab-panel") !== tab
@@ -419,7 +606,7 @@ function initMap(latInput, lonInput) {
   mapInstance = L.map(mapEl).setView([lat, lon], 13);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19
+    maxZoom: 19,
   }).addTo(mapInstance);
 
   mapMarker = L.marker([lat, lon], { draggable: true }).addTo(mapInstance);
@@ -432,7 +619,7 @@ function initMap(latInput, lonInput) {
 
   mapMarker.on("moveend", updateInputsFromMarker);
 
-  mapInstance.on("click", e => {
+  mapInstance.on("click", (e) => {
     const { lat, lng } = e.latlng;
     mapMarker.setLatLng(e.latlng);
     latInput.value = lat.toFixed(4);
@@ -454,23 +641,22 @@ document.addEventListener("DOMContentLoaded", () => {
   initTabs();
   initChecklist();
 
-  // Pre-fill today's date for convenience
+  // Pre-fill today's date
+  const todayStr = formatDate(new Date());
   const todayInput = document.getElementById("date");
   const plannerStartInput = document.getElementById("plannerStartDate");
   const logDateInput = document.getElementById("logDate");
-  const todayStr = formatDate(new Date());
   if (todayInput) todayInput.value = todayStr;
   if (plannerStartInput) plannerStartInput.value = todayStr;
   if (logDateInput) logDateInput.value = todayStr;
 
-  // Init map
+  // Map init
   const latInput = document.getElementById("lat");
   const lonInput = document.getElementById("lon");
   if (latInput && lonInput && window.L) {
     initMap(latInput, lonInput);
   }
 
-  // Map helper buttons
   const centerBtn = document.getElementById("centerOnInputsBtn");
   if (centerBtn && latInput && lonInput) {
     centerBtn.addEventListener("click", () => {
@@ -478,9 +664,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  const copyToPlannerBtn = document.getElementById("copyToPlannerBtn");
   const plannerLatInput = document.getElementById("plannerLat");
   const plannerLonInput = document.getElementById("plannerLon");
+  const copyToPlannerBtn = document.getElementById("copyToPlannerBtn");
   if (copyToPlannerBtn && plannerLatInput && plannerLonInput) {
     copyToPlannerBtn.addEventListener("click", () => {
       plannerLatInput.value = latInput.value;
@@ -488,17 +674,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Keep planner coords roughly in sync when main coords change
-  ["change", "blur"].forEach(evtName => {
-    latInput?.addEventListener(evtName, () => {
+  ["change", "blur"].forEach((evt) => {
+    latInput?.addEventListener(evt, () => {
       if (plannerLatInput) plannerLatInput.value = latInput.value;
     });
-    lonInput?.addEventListener(evtName, () => {
+    lonInput?.addEventListener(evt, () => {
       if (plannerLonInput) plannerLonInput.value = lonInput.value;
     });
   });
 
-  // ----- Live Odds tab -----
+  // -------- Live Odds --------
+
   const calculateBtn = document.getElementById("calculateBtn");
   const errorText = document.getElementById("errorText");
   const weatherCard = document.getElementById("weatherCard");
@@ -515,17 +701,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const ratingText = document.getElementById("ratingText");
   const tipsText = document.getElementById("tipsText");
   const gaugeFill = document.getElementById("gaugeFill");
+  const standsSuggestion = document.getElementById("standsSuggestion");
 
   if (calculateBtn) {
     calculateBtn.addEventListener("click", async () => {
       errorText.style.display = "none";
       resultsCard.style.display = "none";
       weatherCard.style.display = "none";
+      standsSuggestion.textContent = "";
 
       const dateStr = document.getElementById("date").value;
       const timeOfDay = document.getElementById("timeOfDay").value;
       const terrain = document.getElementById("terrain").value;
-      const huntingPressure = document.getElementById("huntingPressure").value;
+      const huntingPressure =
+        document.getElementById("huntingPressure").value;
       const lat = parseFloat(latInput.value);
       const lon = parseFloat(lonInput.value);
 
@@ -551,21 +740,30 @@ document.addEventListener("DOMContentLoaded", () => {
         const { today, prev } = await fetchWeather(lat, lon, dateStr);
         const flags = deriveWeatherFlags(today, prev, targetDate);
 
+        const windDir = windDirFromDeg(today.windDirDeg);
+
         rutPhaseAuto.textContent = `Rut phase (auto): ${rutInfo.label}`;
 
         const rainTextToday =
-          today.precip > 0.05 ? `${today.precip.toFixed(2)}" precip` : "little/no precip";
-        const windTextToday = `${today.windMax.toFixed(0)} mph max wind`;
+          today.precip > 0.05
+            ? `${today.precip.toFixed(2)}" precip`
+            : "little/no precip";
+        const windTextToday = `${windDir || "–"} ${today.windMax.toFixed(
+          0
+        )} mph max wind`;
 
         weatherSummary.textContent =
-          `For ${today.date}: High ${today.tMax.toFixed(0)}°F, ` +
-          `Low ${today.tMin.toFixed(0)}°F, ${rainTextToday}, ${windTextToday}.`;
+          `For ${today.date}: High ${today.tMax.toFixed(
+            0
+          )}°F, Low ${today.tMin.toFixed(0)}°F, ${rainTextToday}, ${windTextToday}.`;
 
         let details = "";
         if (prev) {
           const drop = prev.tMax - today.tMax;
           details += `Prev day high: ${prev.tMax.toFixed(0)}°F `;
-          details += `(change of ${drop >= 0 ? "-" : "+"}${Math.abs(drop).toFixed(0)}°F). `;
+          details += `(change of ${drop >= 0 ? "-" : "+"}${Math.abs(
+            drop
+          ).toFixed(0)}°F). `;
           if (prev.precip > 0.05) {
             details += `Prev day precip: ${prev.precip.toFixed(2)}". `;
           }
@@ -575,8 +773,9 @@ document.addEventListener("DOMContentLoaded", () => {
         weatherDetails.textContent = details;
 
         if (today.sunrise && today.sunset) {
-          weatherSun.textContent =
-            `Sunrise: ${formatTimeShort(today.sunrise)} • Sunset: ${formatTimeShort(today.sunset)}`;
+          weatherSun.textContent = `Sunrise: ${formatTimeShort(
+            today.sunrise
+          )} • Sunset: ${formatTimeShort(today.sunset)}`;
         } else {
           weatherSun.textContent = "";
         }
@@ -599,8 +798,10 @@ document.addEventListener("DOMContentLoaded", () => {
         score += getWeatherModifier(flags);
         score += getPressureModifier(huntingPressure);
 
-        if ((rutPhase === "rut" || rutPhase === "secondRut") &&
-            terrain === "pinesClearcuts") {
+        if (
+          (rutPhase === "rut" || rutPhase === "secondRut") &&
+          terrain === "pinesClearcuts"
+        ) {
           score += 3;
         }
 
@@ -609,7 +810,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         scoreText.textContent = `Activity Score: ${score.toFixed(0)} / 100`;
         chanceText.textContent =
-          `Estimated chance of seeing deer in daylight: ${chancePercent}%`;
+          "Estimated chance of seeing deer in daylight: " +
+          `${chancePercent}%`;
 
         if (gaugeFill) {
           gaugeFill.style.width = `${chancePercent}%`;
@@ -630,6 +832,23 @@ document.addEventListener("DOMContentLoaded", () => {
         );
         tipsText.textContent = `${terrainTip} ${extraTips}`;
 
+        // stand suggestions
+        if (windDir) {
+          const recommended = getRecommendedStandsForWind(windDir, lat, lon);
+          if (recommended.length) {
+            standsSuggestion.textContent =
+              `Wind: ${windDir}. Good stands for this wind: ` +
+              recommended.join(", ") +
+              ".";
+          } else {
+            standsSuggestion.textContent =
+              `Wind: ${windDir}. No saved stands marked for this wind yet.`;
+          }
+        } else {
+          standsSuggestion.textContent =
+            "No wind direction available for stand suggestions.";
+        }
+
         resultsCard.style.display = "block";
         resultsCard.scrollIntoView({ behavior: "smooth" });
       } catch (err) {
@@ -644,7 +863,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ----- 7-Day Planner tab -----
+  // -------- Planner --------
+
   const plannerBtn = document.getElementById("plannerBtn");
   const plannerError = document.getElementById("plannerError");
   const plannerResultsCard = document.getElementById("plannerResultsCard");
@@ -685,6 +905,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const tMin = daily.temperature_2m_min;
         const precip = daily.precipitation_sum;
         const wind = daily.windspeed_10m_max;
+        const windDirDeg = daily.winddirection_10m_dominant;
 
         const startDate = new Date(startDateStr);
         const rows = [];
@@ -705,7 +926,8 @@ document.addEventListener("DOMContentLoaded", () => {
             tMax: tMax[idxToday],
             tMin: tMin[idxToday],
             precip: precip[idxToday],
-            windMax: wind[idxToday]
+            windMax: wind[idxToday],
+            windDirDeg: windDirDeg[idxToday],
           };
 
           let prev = null;
@@ -715,7 +937,8 @@ document.addEventListener("DOMContentLoaded", () => {
               tMax: tMax[idxPrev],
               tMin: tMin[idxPrev],
               precip: precip[idxPrev],
-              windMax: wind[idxPrev]
+              windMax: wind[idxPrev],
+              windDirDeg: windDirDeg[idxPrev],
             };
           }
 
@@ -728,8 +951,10 @@ document.addEventListener("DOMContentLoaded", () => {
             s += getTimeOfDayModifier(timeOfDay, phases);
             s += getWeatherModifier(flags);
             s += getPressureModifier(pressure);
-            if ((phases === "rut" || phases === "secondRut") &&
-                terrain === "pinesClearcuts") {
+            if (
+              (phases === "rut" || phases === "secondRut") &&
+              terrain === "pinesClearcuts"
+            ) {
               s += 3;
             }
             return clamp(s, 20, 90);
@@ -742,13 +967,17 @@ document.addEventListener("DOMContentLoaded", () => {
           const bestTime =
             morningScore >= eveningScore ? "Morning" : "Evening";
 
+          const wDir = windDirFromDeg(today.windDirDeg);
+
           rows.push({
             dateStr,
             rutLabel: rutInfo.label,
             tHi: today.tMax.toFixed(0),
             tLo: today.tMin.toFixed(0),
             bestTime,
-            score: bestScore
+            score: bestScore,
+            windDir: wDir,
+            windMax: today.windMax,
           });
         }
 
@@ -760,26 +989,44 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         const sorted = [...rows].sort((a, b) => b.score - a.score);
-        const bestScoreOverall = sorted[0].score;
+        const best = sorted[0];
+        const bestScoreOverall = best.score;
+        const bestScoreRounded = Math.round(bestScoreOverall);
+
+        // recommended stands for best day
+        const recStands = best.windDir
+          ? getRecommendedStandsForWind(best.windDir, lat, lon)
+          : [];
+
+        const standText = recStands.length
+          ? `Recommended stands for that wind (${best.windDir}): ${recStands.join(
+              ", "
+            )}.`
+          : best.windDir
+          ? `Wind is ${best.windDir}. No saved stands marked for that wind yet.`
+          : "No wind direction available for stand suggestions.";
 
         plannerSummary.textContent =
-          `Best day looks to be ${sorted[0].dateStr} (${sorted[0].bestTime}) with an activity score around ${Math.round(
-            bestScoreOverall
-          )}/100. Hunt your best spot with the right wind.`;
+          `Best day looks to be ${best.dateStr} (${best.bestTime}) with an activity score around ${bestScoreRounded}/100. ` +
+          standText;
 
         plannerTableBody.innerHTML = "";
-        rows.forEach(row => {
+        rows.forEach((row) => {
           const tr = document.createElement("tr");
           if (row.score === bestScoreOverall) {
             tr.classList.add("best-day");
           }
 
           const scoreRounded = Math.round(row.score);
+          const windCellText = row.windDir
+            ? `${row.windDir} ${row.windMax.toFixed(0)} mph`
+            : `${row.windMax.toFixed(0)} mph`;
 
           tr.innerHTML =
             `<td>${row.dateStr}</td>` +
-            `<td>${row.rutLabel.replace(" (Washington County, GA)", "")}</td>` +
+            `<td>${row.rutLabel}</td>` +
             `<td>${row.tHi} / ${row.tLo}</td>` +
+            `<td>${windCellText}</td>` +
             `<td>${row.bestTime}</td>` +
             `<td>${scoreRounded}</td>`;
 
@@ -799,7 +1046,158 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ----- Hunt log tab -----
+  // -------- Spots & Stands --------
+
+  let spots = loadSpots();
+  let stands = loadStands();
+  renderSpots(spots);
+  renderStands(stands);
+  syncStandSpotOptions(spots);
+
+  const spotUseCurrentBtn = document.getElementById("spotUseCurrentBtn");
+  const spotSaveBtn = document.getElementById("spotSaveBtn");
+  const spotsClearBtn = document.getElementById("spotsClearBtn");
+  const spotsList = document.getElementById("spotsList");
+
+  const spotNameInput = document.getElementById("spotName");
+  const spotLatInput = document.getElementById("spotLat");
+  const spotLonInput = document.getElementById("spotLon");
+  const spotTerrainInput = document.getElementById("spotTerrain");
+  const spotPressureInput = document.getElementById("spotPressure");
+
+  if (spotUseCurrentBtn) {
+    spotUseCurrentBtn.addEventListener("click", () => {
+      spotLatInput.value = latInput.value;
+      spotLonInput.value = lonInput.value;
+    });
+  }
+
+  if (spotSaveBtn) {
+    spotSaveBtn.addEventListener("click", () => {
+      const name = spotNameInput.value.trim();
+      const lat = parseFloat(spotLatInput.value);
+      const lon = parseFloat(spotLonInput.value);
+      const terrain = spotTerrainInput.value;
+      const pressure = spotPressureInput.value;
+
+      if (!name || Number.isNaN(lat) || Number.isNaN(lon)) {
+        alert("Please enter a name and valid coordinates for the spot.");
+        return;
+      }
+
+      const existingIdx = spots.findIndex(
+        (s) => s.name.toLowerCase() === name.toLowerCase()
+      );
+      const spotData = { name, lat, lon, terrain, pressure };
+
+      if (existingIdx >= 0) {
+        spots[existingIdx] = spotData;
+      } else {
+        spots.push(spotData);
+      }
+
+      saveSpots(spots);
+      renderSpots(spots);
+      syncStandSpotOptions(spots);
+    });
+  }
+
+  if (spotsClearBtn) {
+    spotsClearBtn.addEventListener("click", () => {
+      if (!confirm("Clear all saved spots on this device?")) return;
+      spots = [];
+      saveSpots(spots);
+      renderSpots(spots);
+      syncStandSpotOptions(spots);
+    });
+  }
+
+  if (spotsList) {
+    spotsList.addEventListener("click", (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      const parent = target.closest(".spot-item");
+      if (!parent) return;
+      const idx = parseInt(parent.dataset.index, 10);
+      if (Number.isNaN(idx) || !spots[idx]) return;
+      const spot = spots[idx];
+
+      if (target.classList.contains("spot-use-live")) {
+        latInput.value = spot.lat.toFixed(4);
+        lonInput.value = spot.lon.toFixed(4);
+        document.getElementById("terrain").value = spot.terrain;
+        document.getElementById("huntingPressure").value = spot.pressure;
+        centerMapOnInputs(latInput, lonInput);
+      } else if (target.classList.contains("spot-use-planner")) {
+        plannerLatInput.value = spot.lat.toFixed(4);
+        plannerLonInput.value = spot.lon.toFixed(4);
+        document.getElementById("plannerTerrain").value = spot.terrain;
+        document.getElementById("plannerPressure").value = spot.pressure;
+      } else if (target.classList.contains("spot-edit")) {
+        spotNameInput.value = spot.name;
+        spotLatInput.value = spot.lat.toFixed(4);
+        spotLonInput.value = spot.lon.toFixed(4);
+        spotTerrainInput.value = spot.terrain;
+        spotPressureInput.value = spot.pressure;
+      }
+    });
+  }
+
+  // stands
+  const standSaveBtn = document.getElementById("standSaveBtn");
+  const standsClearBtn = document.getElementById("standsClearBtn");
+  const standNameInput = document.getElementById("standName");
+  const standSpotSelect = document.getElementById("standSpot");
+  const standTerrainSelect = document.getElementById("standTerrain");
+  const standNotesInput = document.getElementById("standNotes");
+  const windGrid = document.querySelector(".wind-grid");
+
+  if (standSaveBtn) {
+    standSaveBtn.addEventListener("click", () => {
+      const name = standNameInput.value.trim();
+      if (!name) {
+        alert("Please enter a stand name.");
+        return;
+      }
+
+      const spotName = standSpotSelect.value || "";
+      const terrain = standTerrainSelect.value;
+      const notes = standNotesInput.value.trim();
+
+      const winds = [];
+      if (windGrid) {
+        windGrid.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+          if (cb.checked) winds.push(cb.value);
+        });
+      }
+
+      const standData = { name, spotName, terrain, winds, notes };
+
+      const existingIdx = stands.findIndex(
+        (s) => s.name.toLowerCase() === name.toLowerCase()
+      );
+      if (existingIdx >= 0) {
+        stands[existingIdx] = standData;
+      } else {
+        stands.push(standData);
+      }
+
+      saveStands(stands);
+      renderStands(stands);
+    });
+  }
+
+  if (standsClearBtn) {
+    standsClearBtn.addEventListener("click", () => {
+      if (!confirm("Clear all saved stands on this device?")) return;
+      stands = [];
+      saveStands(stands);
+      renderStands(stands);
+    });
+  }
+
+  // -------- Hunt log --------
+
   const logSaveBtn = document.getElementById("logSaveBtn");
   const logClearBtn = document.getElementById("logClearBtn");
   const logError = document.getElementById("logError");
