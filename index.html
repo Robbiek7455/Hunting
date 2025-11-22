@@ -19,9 +19,9 @@
       <div class="brand">
         <span class="brand-icon">🦌</span>
         <div>
-          <h1>Deer Activity & Hunt Planner</h1>
+          <h1>Deer Activity &amp; Hunt Planner</h1>
           <p class="subtitle">
-            Live weather • Rut model • Planner • Spots • Stands • Logs • Checklist
+            Live weather · Rut model · Planner · Spots · Stands · Log · Checklist
           </p>
         </div>
       </div>
@@ -32,7 +32,7 @@
       <button class="tab-btn active" data-tab="liveOdds">Live Odds</button>
       <button class="tab-btn" data-tab="planner">Planner</button>
       <button class="tab-btn" data-tab="spots">Spots</button>
-      <button class="tab-btn" data-tab="log">Hunt Log</button>
+      <button class="tab-btn" data-tab="log">Log</button>
       <button class="tab-btn" data-tab="checklist">Checklist</button>
     </nav>
 
@@ -59,7 +59,7 @@
         <div class="field">
           <label for="terrain">Terrain Type</label>
           <select id="terrain">
-            <option value="pinesClearcuts" selected>Pines & clearcuts (Davisboro style)</option>
+            <option value="pinesClearcuts" selected>Pines &amp; clearcuts (Davisboro style)</option>
             <option value="hardwoods">Hardwoods / oak draws</option>
             <option value="agEdges">Ag fields / edges</option>
             <option value="mixed">Mixed habitat</option>
@@ -77,7 +77,7 @@
 
         <h3>Location (for live weather)</h3>
         <p class="hint">
-          Defaults to Davisboro, GA. Change if you hunt somewhere else or load a saved spot.
+          Defaults to Davisboro, GA. Change if you hunt somewhere else.
         </p>
 
         <div class="field-inline">
@@ -94,18 +94,17 @@
         <div id="mapContainer" class="map-card">
           <div class="map-header">
             <h3>Map Location</h3>
-            <div>
-              <button id="centerOnInputsBtn" class="chip-btn">Center on coords</button>
-              <button id="copyToPlannerBtn" class="chip-btn">Use for planner</button>
-            </div>
+            <button id="centerOnInputsBtn" class="chip-btn">Center</button>
+            <button id="copyToPlannerBtn" class="chip-btn">Use for planner</button>
           </div>
           <div id="map" class="map"></div>
           <p class="hint">
-            Drag the pin or tap the map to set your location. The latitude/longitude above update automatically.
+            Drag the pin or tap the map to set your location. The latitude/longitude
+            above update automatically.
           </p>
         </div>
 
-        <button id="calculateBtn">Fetch Live Weather & Calculate Odds</button>
+        <button id="calculateBtn">Fetch Live Weather &amp; Calculate Odds</button>
         <p id="errorText" class="error" style="display:none;"></p>
       </section>
 
@@ -128,17 +127,19 @@
         <p class="badge" id="badgeText"></p>
         <p class="rating" id="ratingText"></p>
         <hr />
-        <h3>Hunt Tips For This Setup</h3>
+        <h3>Stand Suggestions</h3>
+        <p id="standsSuggestion"></p>
+        <h3>Hunt Tips</h3>
         <p id="tipsText"></p>
       </section>
     </section>
 
-    <!-- ========== TAB: PLANNER ========== -->
+    <!-- ========== TAB: 7-DAY PLANNER ========== -->
     <section class="tab-panel hidden" data-tab-panel="planner">
       <section class="card">
-        <h2>7-Day Planner</h2>
+        <h2>7-Day Activity Planner</h2>
         <p class="hint">
-          Uses your coordinates + rut model to rank the next 7 days. Shows rut phase, wind, best time of day, and a score.
+          Uses your coordinates + rut model to rank the next 7 days. Morning &amp; evening are scored automatically; it shows the best time of day and wind.
         </p>
 
         <div class="field-inline">
@@ -157,24 +158,23 @@
           <input type="date" id="plannerStartDate" />
         </div>
 
-        <div class="field-inline">
-          <div class="field">
-            <label for="plannerTerrain">Terrain</label>
-            <select id="plannerTerrain">
-              <option value="pinesClearcuts" selected>Pines & clearcuts</option>
-              <option value="hardwoods">Hardwoods</option>
-              <option value="agEdges">Ag edges</option>
-              <option value="mixed">Mixed</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="plannerPressure">Hunting Pressure</label>
-            <select id="plannerPressure">
-              <option value="low">Low</option>
-              <option value="medium" selected>Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
+        <div class="field">
+          <label for="plannerTerrain">Terrain</label>
+          <select id="plannerTerrain">
+            <option value="pinesClearcuts" selected>Pines &amp; clearcuts</option>
+            <option value="hardwoods">Hardwoods</option>
+            <option value="agEdges">Ag edges</option>
+            <option value="mixed">Mixed</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="plannerPressure">Hunting Pressure</label>
+          <select id="plannerPressure">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
         </div>
 
         <button id="plannerBtn">Generate 7-Day Forecast</button>
@@ -209,7 +209,7 @@
       <section class="card">
         <h2>Saved Spots</h2>
         <p class="hint">
-          Save named spots with coordinates, terrain, and default pressure. Load them into Live Odds or Planner in one tap.
+          Save named spots with coordinates, terrain, and default pressure. Load them straight into Live Odds &amp; the Planner.
         </p>
 
         <div class="field">
@@ -240,7 +240,7 @@
           <div class="field">
             <label for="spotTerrain">Default Terrain</label>
             <select id="spotTerrain">
-              <option value="pinesClearcuts" selected>Pines & clearcuts</option>
+              <option value="pinesClearcuts" selected>Pines &amp; clearcuts</option>
               <option value="hardwoods">Hardwoods</option>
               <option value="agEdges">Ag edges</option>
               <option value="mixed">Mixed</option>
@@ -266,9 +266,9 @@
       </section>
 
       <section class="card">
-        <h2>Stands & Wind</h2>
+        <h2>Stands &amp; Wind</h2>
         <p class="hint">
-          Save stands with preferred winds and link them to spots. The planner will suggest stands that match the best day's wind.
+          Save stands with preferred winds and link them to spots. The planner and live odds will recommend stands for a given wind.
         </p>
 
         <div class="field">
@@ -290,21 +290,21 @@
         <div class="field">
           <label>Good Wind Directions</label>
           <div class="wind-grid">
-            <label><input type="checkbox" id="wind-N" value="N" /> N</label>
-            <label><input type="checkbox" id="wind-NE" value="NE" /> NE</label>
-            <label><input type="checkbox" id="wind-E" value="E" /> E</label>
-            <label><input type="checkbox" id="wind-SE" value="SE" /> SE</label>
-            <label><input type="checkbox" id="wind-S" value="S" /> S</label>
-            <label><input type="checkbox" id="wind-SW" value="SW" /> SW</label>
-            <label><input type="checkbox" id="wind-W" value="W" /> W</label>
-            <label><input type="checkbox" id="wind-NW" value="NW" /> NW</label>
+            <label><input type="checkbox" value="N" /> N</label>
+            <label><input type="checkbox" value="NE" /> NE</label>
+            <label><input type="checkbox" value="E" /> E</label>
+            <label><input type="checkbox" value="SE" /> SE</label>
+            <label><input type="checkbox" value="S" /> S</label>
+            <label><input type="checkbox" value="SW" /> SW</label>
+            <label><input type="checkbox" value="W" /> W</label>
+            <label><input type="checkbox" value="NW" /> NW</label>
           </div>
         </div>
 
         <div class="field">
           <label for="standTerrain">Terrain</label>
           <select id="standTerrain">
-            <option value="pinesClearcuts" selected>Pines & clearcuts</option>
+            <option value="pinesClearcuts" selected>Pines &amp; clearcuts</option>
             <option value="hardwoods">Hardwoods</option>
             <option value="agEdges">Ag edges</option>
             <option value="mixed">Mixed</option>
@@ -401,14 +401,14 @@
     <!-- ========== TAB: CHECKLIST ========== -->
     <section class="tab-panel hidden" data-tab-panel="checklist">
       <section class="card">
-        <h2>Gear & Pre-Hunt Checklist</h2>
+        <h2>Gear &amp; Pre-Hunt Checklist</h2>
         <p class="hint">
           Checked items are remembered on this device. Great quick-check before you leave camp or the truck.
         </p>
 
         <div class="checklist-grid" id="checklist">
           <div>
-            <h3>Weapon & Ammo</h3>
+            <h3>Weapon &amp; Ammo</h3>
             <label><input type="checkbox" id="cl-rifle" /> Rifle / bow</label>
             <label><input type="checkbox" id="cl-ammo" /> Ammo / arrows</label>
             <label><input type="checkbox" id="cl-release" /> Release / sling</label>
@@ -423,14 +423,14 @@
             <label><input type="checkbox" id="cl-water" /> Water / snacks</label>
           </div>
           <div>
-            <h3>Clothing & Scent</h3>
+            <h3>Clothing &amp; Scent</h3>
             <label><input type="checkbox" id="cl-layers" /> Proper layers</label>
             <label><input type="checkbox" id="cl-rain" /> Rain gear (if needed)</label>
             <label><input type="checkbox" id="cl-scent" /> Scent control / cover</label>
             <label><input type="checkbox" id="cl-gloves" /> Gloves / beanie</label>
           </div>
           <div>
-            <h3>Stand & Safety</h3>
+            <h3>Stand &amp; Safety</h3>
             <label><input type="checkbox" id="cl-safetyHarness" /> Safety harness</label>
             <label><input type="checkbox" id="cl-lineman" /> Lineman’s belt / tether</label>
             <label><input type="checkbox" id="cl-strap" /> Extra straps / rope</label>
@@ -446,7 +446,7 @@
 
     <footer>
       <p>
-        Weather from Open-Meteo. Rut model based on Georgia rut timing (Washington County peak late October, plus estimated second rut).
+        Weather from Open-Meteo. Rut model based on Georgia rut timing (Washington County peak ~late October with a late-November second rut).
         This site is a helper tool only – always hunt safely and within regulations.
       </p>
     </footer>
