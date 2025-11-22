@@ -1,457 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Deer Activity & Hunt Planner</title>
+  <meta charset="utf-8" />
+  <title>Davisboro Hunt Map & Deer Odds</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link rel="stylesheet" href="style.css" />
 
-  <!-- Leaflet for map -->
+  <!-- Leaflet CSS -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
   />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Your styles -->
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="app">
-    <header class="top-bar">
-      <div class="brand">
-        <span class="brand-icon">🦌</span>
-        <div>
-          <h1>Deer Activity &amp; Hunt Planner</h1>
-          <p class="subtitle">
-            Live weather · Rut model · Planner · Spots · Stands · Log · Checklist
-          </p>
-        </div>
-      </div>
+  <div class="page">
+    <header class="page-header">
+      <h1>Davisboro Hunt Map &amp; Deer Activity</h1>
+      <p>
+        Terrain &amp; satellite map • Stands / feeders / cams • Live deer odds • 7-day planner
+      </p>
+      <nav class="top-nav">
+        <a href="#live">Live Odds</a>
+        <a href="#map">Map &amp; Waypoints</a>
+        <a href="#planner">7-Day Planner</a>
+      </nav>
     </header>
 
-    <!-- Tabs navigation -->
-    <nav class="tabs">
-      <button class="tab-btn active" data-tab="liveOdds">Live Odds</button>
-      <button class="tab-btn" data-tab="planner">Planner</button>
-      <button class="tab-btn" data-tab="spots">Spots</button>
-      <button class="tab-btn" data-tab="log">Log</button>
-      <button class="tab-btn" data-tab="checklist">Checklist</button>
-    </nav>
+    <!-- LIVE ODDS + MAP -->
+    <section id="live" class="card">
+      <h2>Live Odds (single sit)</h2>
+      <p class="lead">
+        Pick a date, time and setup. The app grabs live weather and gives a 0–100 deer movement score.
+      </p>
 
-    <!-- ========== TAB: LIVE ODDS ========== -->
-    <section class="tab-panel" data-tab-panel="liveOdds">
-      <section class="card">
-        <h2>Hunt Setup</h2>
-
-        <div class="field">
-          <label for="date">Hunt Date</label>
-          <input type="date" id="date" />
-        </div>
-
-        <div class="field">
-          <label for="timeOfDay">Time of Day</label>
-          <select id="timeOfDay">
-            <option value="morning">Morning (first 3 hours)</option>
-            <option value="midday">Midday (10 AM – 2 PM)</option>
-            <option value="evening">Evening (last 3 hours)</option>
-            <option value="allDay">All-day sit</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="terrain">Terrain Type</label>
-          <select id="terrain">
-            <option value="pinesClearcuts" selected>Pines &amp; clearcuts (Davisboro style)</option>
-            <option value="hardwoods">Hardwoods / oak draws</option>
-            <option value="agEdges">Ag fields / edges</option>
-            <option value="mixed">Mixed habitat</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="huntingPressure">Hunting Pressure</label>
-          <select id="huntingPressure">
-            <option value="low">Low (private, lightly hunted)</option>
-            <option value="medium" selected>Medium</option>
-            <option value="high">High (public / heavily hunted)</option>
-          </select>
-        </div>
-
-        <h3>Location (for live weather)</h3>
-        <p class="hint">
-          Defaults to Davisboro, GA. Change if you hunt somewhere else.
-        </p>
-
-        <div class="field-inline">
+      <div class="two-col">
+        <!-- Left: form -->
+        <form id="live-form">
           <div class="field">
-            <label for="lat">Latitude</label>
-            <input type="number" id="lat" step="0.0001" value="32.9533" />
+            <label for="live-date">Hunt date</label>
+            <input type="date" id="live-date" required />
           </div>
-          <div class="field">
-            <label for="lon">Longitude</label>
-            <input type="number" id="lon" step="0.0001" value="-82.6182" />
-          </div>
-        </div>
 
-        <div id="mapContainer" class="map-card">
+          <div class="field">
+            <span class="label">Time of day</span>
+            <div class="chip-row">
+              <label><input type="radio" name="live-time" value="morning" checked />Morning</label>
+              <label><input type="radio" name="live-time" value="midday" />Mid-day</label>
+              <label><input type="radio" name="live-time" value="evening" />Evening</label>
+              <label><input type="radio" name="live-time" value="allday" />All-day</label>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="label">Terrain</span>
+            <div class="chip-row">
+              <label><input type="radio" name="live-terrain" value="pines" checked />Pines / clear-cut</label>
+              <label><input type="radio" name="live-terrain" value="hardwoods" />Hardwoods</label>
+              <label><input type="radio" name="live-terrain" value="ag" />Ag / edges</label>
+              <label><input type="radio" name="live-terrain" value="mixed" />Mixed</label>
+            </div>
+          </div>
+
+          <div class="field">
+            <span class="label">Hunting pressure</span>
+            <div class="chip-row">
+              <label><input type="radio" name="live-pressure" value="low" checked />Low</label>
+              <label><input type="radio" name="live-pressure" value="medium" />Medium</label>
+              <label><input type="radio" name="live-pressure" value="high" />High</label>
+            </div>
+          </div>
+
+          <div class="field two">
+            <div>
+              <label for="live-lat">Latitude</label>
+              <input type="number" step="0.000001" id="live-lat" placeholder="32.9790" />
+            </div>
+            <div>
+              <label for="live-lon">Longitude</label>
+              <input type="number" step="0.000001" id="live-lon" placeholder="-82.6079" />
+            </div>
+          </div>
+
+          <div class="button-row">
+            <button type="button" class="secondary small" id="btn-my-location">📍 Use my location</button>
+            <button type="submit" id="btn-live-run">⚡ Get live odds</button>
+          </div>
+          <p class="hint">
+            If you leave lat/lon empty, it defaults to your Davisboro property center.
+          </p>
+        </form>
+
+        <!-- Right: map -->
+        <div class="map-panel">
           <div class="map-header">
-            <h3>Map Location</h3>
-            <button id="centerOnInputsBtn" class="chip-btn">Center</button>
-            <button id="copyToPlannerBtn" class="chip-btn">Use for planner</button>
+            <div>
+              <strong>Hunt map</strong>
+              <p>
+                Orange pin = hunt center. Turn on “Add waypoint” and tap the map to mark stands, feeders, blinds, or trail cams.
+              </p>
+            </div>
+            <button type="button" class="secondary small" id="btn-add-waypoint">
+              ➕ Add waypoint mode
+            </button>
           </div>
           <div id="map" class="map"></div>
-          <p class="hint">
-            Drag the pin or tap the map to set your location. The latitude/longitude
-            above update automatically.
-          </p>
+          <div class="map-legend" id="map-legend"></div>
+        </div>
+      </div>
+
+      <!-- Live odds output -->
+      <div id="live-results" class="results">
+        <div class="score-row">
+          <div class="score-badge" id="score-badge">Score –</div>
+          <div class="score-bar-outer">
+            <div class="score-bar-inner" id="score-bar"></div>
+          </div>
+          <div class="score-label" id="score-label">Waiting for a run…</div>
         </div>
 
-        <button id="calculateBtn">Fetch Live Weather &amp; Calculate Odds</button>
-        <p id="errorText" class="error" style="display:none;"></p>
-      </section>
-
-      <section class="card" id="weatherCard" style="display:none;">
-        <h2>Live Weather Summary</h2>
-        <p id="rutPhaseAuto" class="rut-label"></p>
-        <p id="weatherSummary"></p>
-        <p id="weatherDetails"></p>
-        <p id="weatherSun"></p>
-        <p id="weatherFlags"></p>
-      </section>
-
-      <section class="card" id="resultsCard" style="display:none;">
-        <h2>Deer Activity Results</h2>
-        <div class="gauge">
-          <div class="gauge-fill" id="gaugeFill"></div>
-        </div>
-        <p class="score" id="scoreText">Score: –</p>
-        <p class="chance" id="chanceText">Chance: –</p>
-        <p class="badge" id="badgeText"></p>
-        <p class="rating" id="ratingText"></p>
-        <hr />
-        <h3>Stand Suggestions</h3>
-        <p id="standsSuggestion"></p>
-        <h3>Hunt Tips</h3>
-        <p id="tipsText"></p>
-      </section>
+        <div class="factor-grid" id="factor-grid"></div>
+        <div class="analysis-note" id="analysis-note"></div>
+      </div>
     </section>
 
-    <!-- ========== TAB: 7-DAY PLANNER ========== -->
-    <section class="tab-panel hidden" data-tab-panel="planner">
-      <section class="card">
-        <h2>7-Day Activity Planner</h2>
-        <p class="hint">
-          Uses your coordinates + rut model to rank the next 7 days. Morning &amp; evening are scored automatically; it shows the best time of day and wind.
-        </p>
+    <!-- WAYPOINTS -->
+    <section id="map-waypoints" class="card">
+      <h2>Waypoints (stands / feeders / blinds / trail cams)</h2>
+      <p class="lead">
+        Saved on this device only. Great for quickly seeing what’s where.
+      </p>
 
-        <div class="field-inline">
-          <div class="field">
-            <label for="plannerLat">Latitude</label>
-            <input type="number" id="plannerLat" step="0.0001" value="32.9533" />
+      <form id="waypoint-form">
+        <div class="field two">
+          <div>
+            <label for="wp-name">Name</label>
+            <input id="wp-name" type="text" placeholder="North ladder stand" />
           </div>
-          <div class="field">
-            <label for="plannerLon">Longitude</label>
-            <input type="number" id="plannerLon" step="0.0001" value="-82.6182" />
+          <div>
+            <label for="wp-type">Type</label>
+            <select id="wp-type">
+              <option>Stand</option>
+              <option>Ground Blind</option>
+              <option>Feeder</option>
+              <option>Trail Cam</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field two">
+          <div>
+            <label for="wp-lat">Latitude</label>
+            <input id="wp-lat" type="number" step="0.000001" placeholder="click map to fill" />
+          </div>
+          <div>
+            <label for="wp-lon">Longitude</label>
+            <input id="wp-lon" type="number" step="0.000001" placeholder="click map to fill" />
           </div>
         </div>
 
         <div class="field">
-          <label for="plannerStartDate">Start Date</label>
-          <input type="date" id="plannerStartDate" />
+          <label for="wp-notes">Notes</label>
+          <textarea id="wp-notes" placeholder="Best on N wind, enter from south road."></textarea>
+        </div>
+
+        <div class="button-row">
+          <button type="submit" id="wp-submit">💾 Save waypoint</button>
+          <button type="button" class="secondary small" id="wp-use-center">⬇ Use hunt center</button>
+          <button type="button" class="danger small" id="wp-clear-all">🗑 Clear ALL (this device)</button>
+        </div>
+      </form>
+
+      <div class="table-scroll mt-compact">
+        <table>
+          <thead>
+            <tr>
+              <th>Name / type</th>
+              <th>Coords</th>
+              <th>Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="waypoint-list"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 7-DAY PLANNER -->
+    <section id="planner" class="card">
+      <h2>7-Day Deer Activity Planner</h2>
+      <p class="lead">
+        Ranks the next 7 days (0–100) using the same rut + weather model, so you know which days to prioritize.
+      </p>
+
+      <form id="planner-form">
+        <div class="field two">
+          <div>
+            <label for="plan-start">Start date</label>
+            <input type="date" id="plan-start" required />
+          </div>
+          <div>
+            <label for="plan-terrain">Terrain</label>
+            <select id="plan-terrain">
+              <option value="pines">Pines / clear-cut</option>
+              <option value="hardwoods">Hardwoods</option>
+              <option value="ag">Ag / edges</option>
+              <option value="mixed" selected>Mixed</option>
+            </select>
+          </div>
         </div>
 
         <div class="field">
-          <label for="plannerTerrain">Terrain</label>
-          <select id="plannerTerrain">
-            <option value="pinesClearcuts" selected>Pines &amp; clearcuts</option>
-            <option value="hardwoods">Hardwoods</option>
-            <option value="agEdges">Ag edges</option>
-            <option value="mixed">Mixed</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="plannerPressure">Hunting Pressure</label>
-          <select id="plannerPressure">
+          <label for="plan-pressure">Hunting pressure</label>
+          <select id="plan-pressure">
             <option value="low">Low</option>
             <option value="medium" selected>Medium</option>
             <option value="high">High</option>
           </select>
         </div>
 
-        <button id="plannerBtn">Generate 7-Day Forecast</button>
-        <p id="plannerError" class="error" style="display:none;"></p>
-      </section>
-
-      <section class="card" id="plannerResultsCard" style="display:none;">
-        <h2>Upcoming Hunts</h2>
-        <p id="plannerSummary"></p>
-        <div class="table-wrapper">
-          <table id="plannerTable">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Rut</th>
-                <th>Hi / Lo (°F)</th>
-                <th>Wind</th>
-                <th>Best Time</th>
-                <th>Score</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- filled by JS -->
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </section>
-
-    <!-- ========== TAB: SPOTS & STANDS ========== -->
-    <section class="tab-panel hidden" data-tab-panel="spots">
-      <section class="card">
-        <h2>Saved Spots</h2>
-        <p class="hint">
-          Save named spots with coordinates, terrain, and default pressure. Load them straight into Live Odds &amp; the Planner.
-        </p>
-
-        <div class="field">
-          <label for="spotName">Spot Name</label>
-          <input
-            type="text"
-            id="spotName"
-            placeholder="e.g., North Pines, Creek Bottom"
-          />
-        </div>
-
-        <div class="field-inline">
-          <div class="field">
-            <label for="spotLat">Latitude</label>
-            <input type="number" id="spotLat" step="0.0001" />
-          </div>
-          <div class="field">
-            <label for="spotLon">Longitude</label>
-            <input type="number" id="spotLon" step="0.0001" />
-          </div>
-        </div>
-
-        <button id="spotUseCurrentBtn" class="chip-btn">
-          Use current Live Odds coords
-        </button>
-
-        <div class="field-inline">
-          <div class="field">
-            <label for="spotTerrain">Default Terrain</label>
-            <select id="spotTerrain">
-              <option value="pinesClearcuts" selected>Pines &amp; clearcuts</option>
-              <option value="hardwoods">Hardwoods</option>
-              <option value="agEdges">Ag edges</option>
-              <option value="mixed">Mixed</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="spotPressure">Default Pressure</label>
-            <select id="spotPressure">
-              <option value="low">Low</option>
-              <option value="medium" selected>Medium</option>
-              <option value="high">High</option>
-            </select>
-          </div>
-        </div>
-
-        <button id="spotSaveBtn">Save / Update Spot</button>
-        <button id="spotsClearBtn" class="secondary-btn">Clear All Spots</button>
-
-        <section class="card-inner">
-          <h3>Your Spots</h3>
-          <div id="spotsList"></div>
-        </section>
-      </section>
-
-      <section class="card">
-        <h2>Stands &amp; Wind</h2>
-        <p class="hint">
-          Save stands with preferred winds and link them to spots. The planner and live odds will recommend stands for a given wind.
-        </p>
-
-        <div class="field">
-          <label for="standName">Stand Name</label>
-          <input
-            type="text"
-            id="standName"
-            placeholder="e.g., East Ladder, Clearcut Corner"
-          />
-        </div>
-
-        <div class="field">
-          <label for="standSpot">Linked Spot (optional)</label>
-          <select id="standSpot">
-            <option value="">No specific spot</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label>Good Wind Directions</label>
-          <div class="wind-grid">
-            <label><input type="checkbox" value="N" /> N</label>
-            <label><input type="checkbox" value="NE" /> NE</label>
-            <label><input type="checkbox" value="E" /> E</label>
-            <label><input type="checkbox" value="SE" /> SE</label>
-            <label><input type="checkbox" value="S" /> S</label>
-            <label><input type="checkbox" value="SW" /> SW</label>
-            <label><input type="checkbox" value="W" /> W</label>
-            <label><input type="checkbox" value="NW" /> NW</label>
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="standTerrain">Terrain</label>
-          <select id="standTerrain">
-            <option value="pinesClearcuts" selected>Pines &amp; clearcuts</option>
-            <option value="hardwoods">Hardwoods</option>
-            <option value="agEdges">Ag edges</option>
-            <option value="mixed">Mixed</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="standNotes">Notes</label>
-          <textarea
-            id="standNotes"
-            rows="3"
-            placeholder="Example: Best on NW wind, deer enter from clearcut, climb quietly."
-          ></textarea>
-        </div>
-
-        <button id="standSaveBtn">Save Stand</button>
-        <button id="standsClearBtn" class="secondary-btn">Clear All Stands</button>
-
-        <section class="card-inner">
-          <h3>Your Stands</h3>
-          <div id="standsList"></div>
-        </section>
-      </section>
-    </section>
-
-    <!-- ========== TAB: HUNT LOG ========== -->
-    <section class="tab-panel hidden" data-tab-panel="log">
-      <section class="card">
-        <h2>Hunt Log</h2>
-        <p class="hint">
-          Saved locally on this device only. Great for tracking how your land hunts over time.
-        </p>
-
-        <div class="field-inline">
-          <div class="field">
-            <label for="logDate">Date</label>
-            <input type="date" id="logDate" />
-          </div>
-          <div class="field">
-            <label for="logTimeOfDay">Time of Day</label>
-            <select id="logTimeOfDay">
-              <option value="morning">Morning</option>
-              <option value="midday">Midday</option>
-              <option value="evening">Evening</option>
-              <option value="allDay">All-day</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="field-inline">
-          <div class="field">
-            <label for="logDeerSeen">Deer Seen</label>
-            <input type="number" id="logDeerSeen" min="0" step="1" value="0" />
-          </div>
-          <div class="field">
-            <label for="logShots">Shots Taken</label>
-            <input type="number" id="logShots" min="0" step="1" value="0" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label for="logSuccess">Tag Filled?</label>
-          <select id="logSuccess">
-            <option value="no">No</option>
-            <option value="yes">Yes</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="logNotes">Notes (wind, stand, behavior, etc.)</label>
-          <textarea
-            id="logNotes"
-            rows="3"
-            placeholder="Example: North wind, sat pine/clearcut corner, heavy cruising 9:30–11:00."
-          ></textarea>
-        </div>
-
-        <button id="logSaveBtn">Save Hunt</button>
-        <button id="logClearBtn" class="secondary-btn">Clear All Logs</button>
-        <p id="logError" class="error" style="display:none;"></p>
-      </section>
-
-      <section class="card" id="logStatsCard" style="display:none;">
-        <h2>Stats from Your Logs</h2>
-        <p id="logStats"></p>
-      </section>
-
-      <section class="card" id="logListCard" style="display:none;">
-        <h2>Saved Hunts</h2>
-        <div id="logList"></div>
-      </section>
-    </section>
-
-    <!-- ========== TAB: CHECKLIST ========== -->
-    <section class="tab-panel hidden" data-tab-panel="checklist">
-      <section class="card">
-        <h2>Gear &amp; Pre-Hunt Checklist</h2>
-        <p class="hint">
-          Checked items are remembered on this device. Great quick-check before you leave camp or the truck.
-        </p>
-
-        <div class="checklist-grid" id="checklist">
+        <div class="field two">
           <div>
-            <h3>Weapon &amp; Ammo</h3>
-            <label><input type="checkbox" id="cl-rifle" /> Rifle / bow</label>
-            <label><input type="checkbox" id="cl-ammo" /> Ammo / arrows</label>
-            <label><input type="checkbox" id="cl-release" /> Release / sling</label>
-            <label><input type="checkbox" id="cl-rangefinder" /> Rangefinder</label>
+            <label for="plan-lat">Latitude</label>
+            <input id="plan-lat" type="number" step="0.000001" placeholder="auto from hunt center" />
           </div>
           <div>
-            <h3>Essentials</h3>
-            <label><input type="checkbox" id="cl-license" /> License / tags</label>
-            <label><input type="checkbox" id="cl-phone" /> Phone charged</label>
-            <label><input type="checkbox" id="cl-headlamp" /> Headlamp + batteries</label>
-            <label><input type="checkbox" id="cl-knife" /> Knife</label>
-            <label><input type="checkbox" id="cl-water" /> Water / snacks</label>
-          </div>
-          <div>
-            <h3>Clothing &amp; Scent</h3>
-            <label><input type="checkbox" id="cl-layers" /> Proper layers</label>
-            <label><input type="checkbox" id="cl-rain" /> Rain gear (if needed)</label>
-            <label><input type="checkbox" id="cl-scent" /> Scent control / cover</label>
-            <label><input type="checkbox" id="cl-gloves" /> Gloves / beanie</label>
-          </div>
-          <div>
-            <h3>Stand &amp; Safety</h3>
-            <label><input type="checkbox" id="cl-safetyHarness" /> Safety harness</label>
-            <label><input type="checkbox" id="cl-lineman" /> Lineman’s belt / tether</label>
-            <label><input type="checkbox" id="cl-strap" /> Extra straps / rope</label>
-            <label><input type="checkbox" id="cl-map" /> Map / onX downloaded</label>
+            <label for="plan-lon">Longitude</label>
+            <input id="plan-lon" type="number" step="0.000001" placeholder="auto from hunt center" />
           </div>
         </div>
 
-        <button id="checklistClearBtn" class="secondary-btn">
-          Clear Checklist (this device)
-        </button>
-      </section>
+        <div class="button-row">
+          <button type="submit" id="btn-plan-run">📆 Generate 7-day plan</button>
+        </div>
+      </form>
+
+      <div class="table-scroll mt-compact">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Rut phase</th>
+              <th>Hi / Lo (°F)</th>
+              <th>Wind</th>
+              <th>Weather</th>
+              <th>Focus</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody id="planner-rows"></tbody>
+        </table>
+      </div>
     </section>
 
-    <footer>
-      <p>
-        Weather from Open-Meteo. Rut model based on Georgia rut timing (Washington County peak ~late October with a late-November second rut).
-        This site is a helper tool only – always hunt safely and within regulations.
+    <section class="card">
+      <p class="hint">
+        Weather by Open-Meteo. Rut timing tuned loosely to Washington Co., GA (late Oct / late Nov).
+        Always follow regs and use your own judgment.
       </p>
-    </footer>
+    </section>
   </div>
 
-  <script src="script.js"></script>
+  <!-- Leaflet JS -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-o9N1j7kGStpG32sV1J5x7M7Wv5p3p5lH0kG2Z7r3yU="
+    crossorigin=""
+  ></script>
+
+  <!-- Your app logic -->
+  <script src="app.js"></script>
 </body>
 </html>
